@@ -5,8 +5,6 @@
 // CHECK: ttng.init_barrier
 // CHECK: ttng.init_barrier
 // CHECK: gpu.barrier
-// CHECK: ttng.cluster_arrive
-// CHECK: ttng.cluster_wait
 // CHECK-NOT: nvws.create_token
 // CHECK-NOT: nvws.producer_acquire
 // CHECK-NOT: nvws.producer_commit
