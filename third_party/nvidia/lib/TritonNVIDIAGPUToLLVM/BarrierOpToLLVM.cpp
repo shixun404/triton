@@ -35,6 +35,14 @@ using namespace mlir;
 using namespace mlir::triton;
 
 namespace {
+static bool useClusterMbarrier(ConversionPatternRewriter &rewriter) {
+  // Heuristic: if we compile with numCTAs > 1, kernels are launched as clusters
+  // and TMA/cp.async paths may use `shared::cluster` scope. In that case, using
+  // CTA-scoped mbarriers can lead to waits that never complete (the completion
+  // mechanism signals at cluster scope).
+  return triton::gpu::lookupNumCTAs(rewriter) > 1;
+}
+
 struct FenceAsyncSharedOpConversion
     : public ConvertOpToLLVMPattern<triton::nvidia_gpu::FenceAsyncSharedOp> {
   using ConvertOpToLLVMPattern<
@@ -70,7 +78,9 @@ struct InitBarrierOpConversion
     auto id = getThreadId(rewriter, loc);
     auto pred = b.icmp_eq(id, b.i32_val(0));
     ::mlir::triton::PTXBuilder ptxBuilder;
-    const std::string ptx = "@$0 mbarrier.init.shared::cta.b64 [$1], " +
+    const char *scope = useClusterMbarrier(rewriter) ? "cluster" : "cta";
+    const std::string ptx =
+        std::string("@$0 mbarrier.init.shared::") + scope + ".b64 [$1], " +
                             std::to_string(op.getCount()) + ";";
     auto &barSyncOp = *ptxBuilder.create(ptx);
     barSyncOp({ptxBuilder.newOperand(pred, "b"),
@@ -100,7 +110,9 @@ struct InvalBarrierOpConversion
     auto id = getThreadId(rewriter, loc);
     Value pred = b.icmp_eq(id, b.i32_val(0));
     ::mlir::triton::PTXBuilder ptxBuilder;
-    const std::string ptx = "@$0 mbarrier.inval.shared::cta.b64 [$1];";
+    const char *scope = useClusterMbarrier(rewriter) ? "cluster" : "cta";
+    const std::string ptx =
+        std::string("@$0 mbarrier.inval.shared::") + scope + ".b64 [$1];";
     auto &barSyncOp = *ptxBuilder.create(ptx);
     barSyncOp({ptxBuilder.newOperand(pred, "b"),
                ptxBuilder.newOperand(smemObj.getBase(), "r")},
@@ -147,8 +159,10 @@ struct BarrierExpectConversion
     }
 
     ::mlir::triton::PTXBuilder ptxBuilder;
+    const char *scope = useClusterMbarrier(rewriter) ? "cluster" : "cta";
     const std::string ptx =
-        "@$0 mbarrier.arrive.expect_tx.shared::cta.b64 _, [$1], " +
+        std::string("@$0 mbarrier.arrive.expect_tx.shared::") + scope +
+        ".b64 _, [$1], " +
         std::to_string(expectedBytes) + ";";
     auto &barSyncOp = *ptxBuilder.create(ptx);
     barSyncOp({ptxBuilder.newOperand(pred, "b"),
@@ -180,6 +194,7 @@ struct WaitBarrierOpConversion
     auto loc = op.getLoc();
     bool predicated =
         adaptor.getPred() && !matchPattern(op.getPred(), m_NonZero());
+    const bool clusterScope = useClusterMbarrier(rewriter);
     std::string ptx;
     if (targetInfo->getComputeCapability() < 90) {
       if (!predicated) {
@@ -228,6 +243,12 @@ struct WaitBarrierOpConversion
 )";
       }
     }
+    if (clusterScope) {
+      // Switch CTA-scoped waits to cluster-scoped waits.
+      llvm::StringRef cta = "shared::cta";
+      llvm::StringRef cluster = "shared::cluster";
+      ptx = llvm::StringRef(ptx).replace(cta, cluster).str();
+    }
     ::mlir::triton::PTXBuilder ptxBuilder;
     auto &waitLoop = *ptxBuilder.create(ptx);
     SmallVector<::mlir::triton::PTXBuilder::Operand *, 3> operands = {
@@ -253,7 +274,8 @@ struct ArriveBarrierOpConversion
                   ConversionPatternRewriter &rewriter) const override {
     // TODO: Add phase result as needed.
     std::stringstream ptxAsm;
-    ptxAsm << "@$0 mbarrier.arrive.shared::cta.b64 _, [$1]";
+    const char *scope = useClusterMbarrier(rewriter) ? "cluster" : "cta";
+    ptxAsm << "@$0 mbarrier.arrive.shared::" << scope << ".b64 _, [$1]";
     if (op.getCount() > 1) {
       ptxAsm << ", " << op.getCount();
     }
