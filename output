@@ -5533,7 +5533,7 @@ module attributes {"ttg.num-ctas" = 1 : i32, "ttg.num-warps" = 4 : i32, ttg.targ
     %31 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>
     %32 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>
     %33 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>
-    "ttg.warp_specialize"(%arg8, %arg2, %arg3, %arg4, %arg5, %18, %31, %0, %33, %27, %29, %9, %32, %30, %28) <{partitionNumWarps = array<i32: 4, 4>, requestedRegisters = array<i32: 232, 232>}> ({
+    "ttg.warp_specialize"(%arg8, %arg2, %arg3, %arg4, %arg5, %18, %31, %0, %33, %27, %29, %9, %32, %28, %30) <{partitionNumWarps = array<i32: 4, 4>, requestedRegisters = array<i32: 232, 232>}> ({
       %210 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 0>} : () -> i64
       %211 = "arith.constant"() <{value = 8 : i32}> {async_task_id = array<i32: 0>} : () -> i32
       %212 = "arith.constant"() <{value = 256 : i32}> {async_task_id = array<i32: 0>} : () -> i32
@@ -5828,8 +5828,8 @@ module attributes {"ttg.num-ctas" = 1 : i32, "ttg.num-warps" = 4 : i32, ttg.targ
           %119 = "ttg.local_alloc"(%118) {async_task_id = array<i32: 2>} : (tensor<128x64xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>) -> !ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>
           %120 = "ttg.memdesc_trans"(%117) <{order = array<i32: 1, 0>}> {async_task_id = array<i32: 2>} : (!ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>) -> !ttg.memdesc<64x128xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = true, elementBitWidth = 16}>, #ttg.shared_memory>
           %121 = "ttng.warp_group_dot"(%112, %120, %arg25) <{inputPrecision = 0 : i32, isAsync = false, maxNumImpreciseAcc = 0 : i32}> {async_task_id = array<i32: 2>} : (!ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>, !ttg.memdesc<64x128xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = true, elementBitWidth = 16}>, #ttg.shared_memory>, tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>) -> tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>
-          "nvws.consumer_release"(%arg22, %88) {async_task_id = array<i32: 2>} : (tensor<4x!nvws.token>, i32) -> ()
-          "nvws.consumer_release"(%arg23, %106) {async_task_id = array<i32: 2>} : (tensor<4x!nvws.token>, i32) -> ()
+          "nvws.consumer_release"(%arg22, %106) {async_task_id = array<i32: 2>} : (tensor<4x!nvws.token>, i32) -> ()
+          "nvws.consumer_release"(%arg23, %88) {async_task_id = array<i32: 2>} : (tensor<4x!nvws.token>, i32) -> ()
           %122 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 2>} : () -> i64
           %123 = "arith.addi"(%arg26, %122) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64, i64) -> i64
           "scf.yield"(%121, %123) {async_task_id = array<i32: 2>} : (tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>, i64) -> ()
@@ -5848,6 +5848,484 @@ module attributes {"ttg.num-ctas" = 1 : i32, "ttg.num-warps" = 4 : i32, ttg.targ
         "ttg.warp_return"() : () -> ()
       }) : () -> ()
     }) : (i32, !tt.ptr<bf16>, i32, i32, i32, !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, tensor<4x!nvws.token>, tensor<4x!nvws.token>, !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, tensor<4x!nvws.token>, tensor<4x!nvws.token>) -> ()
+    "tt.return"() : () -> ()
+  }) {noinline = false} : () -> ()
+}) {"ttg.num-ctas" = 1 : i32, "ttg.num-warps" = 4 : i32, ttg.target = "cuda:90", "ttg.threads-per-warp" = 32 : i32} : () -> ()
+
+
+// -----// WarpSpec internal IR Dump After: doTokenLowering
+"builtin.module"() ({
+  "tt.func"() <{arg_attrs = [{tt.divisibility = 16 : i32}, {tt.divisibility = 16 : i32}, {tt.divisibility = 16 : i32}, {tt.divisibility = 16 : i32}, {tt.divisibility = 16 : i32}, {tt.divisibility = 16 : i32}, {tt.divisibility = 16 : i32}, {tt.divisibility = 16 : i32}, {tt.divisibility = 16 : i32}], function_type = (!tt.ptr<bf16>, !tt.ptr<bf16>, !tt.ptr<bf16>, i32, i32, i32, i32, i32, i32) -> (), sym_name = "matmul_kernel_tma", sym_visibility = "public"}> ({
+  ^bb0(%arg0: !tt.ptr<bf16>, %arg1: !tt.ptr<bf16>, %arg2: !tt.ptr<bf16>, %arg3: i32, %arg4: i32, %arg5: i32, %arg6: i32, %arg7: i32, %arg8: i32):
+    %0 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    %1 = "arith.constant"() <{value = 0 : i32}> : () -> i32
+    %2 = "ttg.memdesc_index"(%0, %1) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%2) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %3 = "arith.constant"() <{value = 1 : i32}> : () -> i32
+    %4 = "ttg.memdesc_index"(%0, %3) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%4) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %5 = "arith.constant"() <{value = 2 : i32}> : () -> i32
+    %6 = "ttg.memdesc_index"(%0, %5) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%6) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %7 = "arith.constant"() <{value = 3 : i32}> : () -> i32
+    %8 = "ttg.memdesc_index"(%0, %7) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%8) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %9 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    %10 = "arith.constant"() <{value = 0 : i32}> : () -> i32
+    %11 = "ttg.memdesc_index"(%9, %10) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%11) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %12 = "arith.constant"() <{value = 1 : i32}> : () -> i32
+    %13 = "ttg.memdesc_index"(%9, %12) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%13) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %14 = "arith.constant"() <{value = 2 : i32}> : () -> i32
+    %15 = "ttg.memdesc_index"(%9, %14) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%15) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %16 = "arith.constant"() <{value = 3 : i32}> : () -> i32
+    %17 = "ttg.memdesc_index"(%9, %16) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%17) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %18 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    %19 = "arith.constant"() <{value = 0 : i32}> : () -> i32
+    %20 = "ttg.memdesc_index"(%18, %19) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%20) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %21 = "arith.constant"() <{value = 1 : i32}> : () -> i32
+    %22 = "ttg.memdesc_index"(%18, %21) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%22) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %23 = "arith.constant"() <{value = 2 : i32}> : () -> i32
+    %24 = "ttg.memdesc_index"(%18, %23) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%24) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %25 = "arith.constant"() <{value = 3 : i32}> : () -> i32
+    %26 = "ttg.memdesc_index"(%18, %25) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%26) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %27 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    %28 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    %29 = "arith.constant"() <{value = 0 : i32}> : () -> i32
+    %30 = "ttg.memdesc_index"(%27, %29) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%30) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %31 = "ttg.memdesc_index"(%28, %29) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%31) <{count = 128 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %32 = "arith.constant"() <{value = 1 : i32}> : () -> i32
+    %33 = "ttg.memdesc_index"(%27, %32) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%33) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %34 = "ttg.memdesc_index"(%28, %32) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%34) <{count = 128 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %35 = "arith.constant"() <{value = 2 : i32}> : () -> i32
+    %36 = "ttg.memdesc_index"(%27, %35) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%36) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %37 = "ttg.memdesc_index"(%28, %35) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%37) <{count = 128 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %38 = "arith.constant"() <{value = 3 : i32}> : () -> i32
+    %39 = "ttg.memdesc_index"(%27, %38) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%39) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %40 = "ttg.memdesc_index"(%28, %38) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%40) <{count = 128 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    "gpu.barrier"() : () -> ()
+    %41 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    %42 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    %43 = "arith.constant"() <{value = 0 : i32}> : () -> i32
+    %44 = "ttg.memdesc_index"(%41, %43) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%44) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %45 = "ttg.memdesc_index"(%42, %43) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%45) <{count = 128 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %46 = "arith.constant"() <{value = 1 : i32}> : () -> i32
+    %47 = "ttg.memdesc_index"(%41, %46) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%47) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %48 = "ttg.memdesc_index"(%42, %46) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%48) <{count = 128 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %49 = "arith.constant"() <{value = 2 : i32}> : () -> i32
+    %50 = "ttg.memdesc_index"(%41, %49) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%50) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %51 = "ttg.memdesc_index"(%42, %49) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%51) <{count = 128 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %52 = "arith.constant"() <{value = 3 : i32}> : () -> i32
+    %53 = "ttg.memdesc_index"(%41, %52) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%53) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %54 = "ttg.memdesc_index"(%42, %52) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%54) <{count = 128 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    "gpu.barrier"() : () -> ()
+    %55 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    %56 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    %57 = "arith.constant"() <{value = 0 : i32}> : () -> i32
+    %58 = "ttg.memdesc_index"(%55, %57) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%58) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %59 = "ttg.memdesc_index"(%56, %57) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%59) <{count = 128 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %60 = "arith.constant"() <{value = 1 : i32}> : () -> i32
+    %61 = "ttg.memdesc_index"(%55, %60) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%61) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %62 = "ttg.memdesc_index"(%56, %60) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%62) <{count = 128 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %63 = "arith.constant"() <{value = 2 : i32}> : () -> i32
+    %64 = "ttg.memdesc_index"(%55, %63) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%64) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %65 = "ttg.memdesc_index"(%56, %63) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%65) <{count = 128 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %66 = "arith.constant"() <{value = 3 : i32}> : () -> i32
+    %67 = "ttg.memdesc_index"(%55, %66) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%67) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %68 = "ttg.memdesc_index"(%56, %66) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%68) <{count = 128 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    "gpu.barrier"() : () -> ()
+    %69 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    %70 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    %71 = "arith.constant"() <{value = 0 : i32}> : () -> i32
+    %72 = "ttg.memdesc_index"(%69, %71) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%72) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %73 = "ttg.memdesc_index"(%70, %71) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%73) <{count = 128 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %74 = "arith.constant"() <{value = 1 : i32}> : () -> i32
+    %75 = "ttg.memdesc_index"(%69, %74) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%75) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %76 = "ttg.memdesc_index"(%70, %74) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%76) <{count = 128 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %77 = "arith.constant"() <{value = 2 : i32}> : () -> i32
+    %78 = "ttg.memdesc_index"(%69, %77) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%78) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %79 = "ttg.memdesc_index"(%70, %77) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%79) <{count = 128 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %80 = "arith.constant"() <{value = 3 : i32}> : () -> i32
+    %81 = "ttg.memdesc_index"(%69, %80) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%81) <{count = 1 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    %82 = "ttg.memdesc_index"(%70, %80) : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+    "ttng.init_barrier"(%82) <{count = 128 : i32}> : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+    "gpu.barrier"() : () -> ()
+    %83 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>
+    %84 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>
+    %85 = "ttg.local_alloc"() : () -> !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>
+    "ttg.warp_specialize"(%arg8, %arg2, %arg3, %arg4, %arg5, %18, %83, %0, %85, %9, %84, %27, %28, %41, %42, %55, %56, %69, %70) <{partitionNumWarps = array<i32: 4, 4>, requestedRegisters = array<i32: 232, 232>}> ({
+      %266 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 0>} : () -> i64
+      %267 = "arith.constant"() <{value = 8 : i32}> {async_task_id = array<i32: 0>} : () -> i32
+      %268 = "arith.constant"() <{value = 256 : i32}> {async_task_id = array<i32: 0>} : () -> i32
+      %269 = "arith.constant"() <{value = 128 : i32}> {async_task_id = array<i32: 0>} : () -> i32
+      %270 = "arith.constant"() <{value = 64 : i32}> {async_task_id = array<i32: 0>} : () -> i32
+      %271 = "arith.constant"() <{value = 0 : i32}> {async_task_id = array<i32: 0>} : () -> i32
+      %272 = "arith.constant"() <{value = 1 : i32}> {async_task_id = array<i32: 0>} : () -> i32
+      %273 = "arith.constant"() <{value = 127 : i32}> {async_task_id = array<i32: 0>} : () -> i32
+      %274 = "arith.constant"() <{value = 63 : i32}> {async_task_id = array<i32: 0>} : () -> i32
+      %275 = "arith.extsi"(%arg6) {async_task_id = array<i32: 0>} : (i32) -> i64
+      %276 = "tt.make_tensor_descriptor"(%arg0, %arg3, %arg5, %275, %266) <{padding = 1 : i32}> {async_task_id = array<i32: 0>} : (!tt.ptr<bf16>, i32, i32, i64, i64) -> !tt.tensordesc<tensor<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>>>
+      %277 = "tt.make_tensor_descriptor"(%arg0, %arg3, %arg5, %275, %266) <{padding = 1 : i32}> {async_task_id = array<i32: 0>} : (!tt.ptr<bf16>, i32, i32, i64, i64) -> !tt.tensordesc<tensor<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>>>
+      %278 = "arith.extsi"(%arg7) {async_task_id = array<i32: 0>} : (i32) -> i64
+      %279 = "tt.make_tensor_descriptor"(%arg1, %arg4, %arg5, %278, %266) <{padding = 1 : i32}> {async_task_id = array<i32: 0>} : (!tt.ptr<bf16>, i32, i32, i64, i64) -> !tt.tensordesc<tensor<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>>>
+      %280 = "tt.get_program_id"() <{axis = 0 : i32}> {async_task_id = array<i32: 0>} : () -> i32
+      %281 = "arith.addi"(%arg4, %273) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i32, i32) -> i32
+      %282 = "arith.divsi"(%281, %269) {async_task_id = array<i32: 0>} : (i32, i32) -> i32
+      %283 = "arith.muli"(%282, %267) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i32, i32) -> i32
+      %284 = "arith.divsi"(%280, %283) {async_task_id = array<i32: 0>} : (i32, i32) -> i32
+      %285 = "arith.muli"(%284, %267) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i32, i32) -> i32
+      %286 = "arith.remsi"(%280, %267) {async_task_id = array<i32: 0>} : (i32, i32) -> i32
+      %287 = "arith.addi"(%285, %286) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i32, i32) -> i32
+      %288 = "arith.remsi"(%280, %283) {async_task_id = array<i32: 0>} : (i32, i32) -> i32
+      %289 = "arith.divsi"(%288, %267) {async_task_id = array<i32: 0>} : (i32, i32) -> i32
+      %290 = "arith.addi"(%arg5, %274) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i32, i32) -> i32
+      %291 = "arith.divsi"(%290, %270) {async_task_id = array<i32: 0>} : (i32, i32) -> i32
+      %292 = "arith.muli"(%287, %268) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i32, i32) -> i32
+      %293 = "arith.addi"(%292, %269) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i32, i32) -> i32
+      %294 = "arith.muli"(%289, %269) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i32, i32) -> i32
+      %295 = "arith.constant"() <{value = 0 : i64}> {async_task_id = array<i32: 0>} : () -> i64
+      %296 = "scf.for"(%271, %291, %272, %295) ({
+      ^bb0(%arg53: i32, %arg54: i64):
+        %297 = "arith.muli"(%arg53, %270) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i32, i32) -> i32
+        %298 = "arith.constant"() <{value = 4 : i32}> {async_task_id = array<i32: 0>} : () -> i32
+        %299 = "arith.extsi"(%298) {async_task_id = array<i32: 0>} : (i32) -> i64
+        %300 = "arith.divui"(%arg54, %299) {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %301 = "arith.muli"(%300, %299) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %302 = "arith.subi"(%arg54, %301) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %303 = "arith.trunci"(%302) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64) -> i32
+        %304 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 0>} : () -> i64
+        %305 = "arith.andi"(%300, %304) {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %306 = "arith.trunci"(%305) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64) -> i1
+        %307 = "arith.constant"() <{value = 4 : i32}> {async_task_id = array<i32: 0>} : () -> i32
+        %308 = "arith.extsi"(%307) {async_task_id = array<i32: 0>} : (i32) -> i64
+        %309 = "arith.divui"(%arg54, %308) {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %310 = "arith.muli"(%309, %308) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %311 = "arith.subi"(%arg54, %310) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %312 = "arith.trunci"(%311) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64) -> i32
+        %313 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 0>} : () -> i64
+        %314 = "arith.andi"(%309, %313) {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %315 = "arith.trunci"(%314) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64) -> i1
+        %316 = "ttg.memdesc_index"(%28, %312) {async_task_id = array<i32: 0>} : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+        %317 = "arith.constant"() <{value = true}> : () -> i1
+        %318 = "arith.xori"(%315, %317) : (i1, i1) -> i1
+        %319 = "arith.extui"(%318) : (i1) -> i32
+        "ttng.wait_barrier"(%316, %319) <{operandSegmentSizes = array<i32: 1, 1, 0, 0>}> {async_task_id = array<i32: 0>} : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> ()
+        %320 = "ttg.memdesc_index"(%18, %312) {async_task_id = array<i32: 0>} : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+        %321 = "arith.constant"() <{value = true}> {async_task_id = array<i32: 0>} : () -> i1
+        "ttng.barrier_expect"(%320, %321) <{size = 16384 : i32}> {async_task_id = array<i32: 0>} : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i1) -> ()
+        %322 = "ttg.memdesc_index"(%83, %312) {async_task_id = array<i32: 0>} : (!ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>
+        "ttng.async_tma_copy_global_to_local"(%276, %292, %297, %320, %322, %321) <{cache = 1 : i32, evict = 1 : i32, isVolatile = false}> {async_task_id = array<i32: 0>} : (!tt.tensordesc<tensor<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>>>, i32, i32, !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, !ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, i1) -> ()
+        %323 = "arith.constant"() <{value = 4 : i32}> {async_task_id = array<i32: 0>} : () -> i32
+        %324 = "arith.extsi"(%323) {async_task_id = array<i32: 0>} : (i32) -> i64
+        %325 = "arith.divui"(%arg54, %324) {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %326 = "arith.muli"(%325, %324) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %327 = "arith.subi"(%arg54, %326) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %328 = "arith.trunci"(%327) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64) -> i32
+        %329 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 0>} : () -> i64
+        %330 = "arith.andi"(%325, %329) {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %331 = "arith.trunci"(%330) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64) -> i1
+        %332 = "arith.constant"() <{value = 4 : i32}> {async_task_id = array<i32: 0>} : () -> i32
+        %333 = "arith.extsi"(%332) {async_task_id = array<i32: 0>} : (i32) -> i64
+        %334 = "arith.divui"(%arg54, %333) {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %335 = "arith.muli"(%334, %333) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %336 = "arith.subi"(%arg54, %335) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %337 = "arith.trunci"(%336) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64) -> i32
+        %338 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 0>} : () -> i64
+        %339 = "arith.andi"(%334, %338) {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %340 = "arith.trunci"(%339) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64) -> i1
+        %341 = "ttg.memdesc_index"(%70, %337) {async_task_id = array<i32: 0>} : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+        %342 = "arith.constant"() <{value = true}> : () -> i1
+        %343 = "arith.xori"(%340, %342) : (i1, i1) -> i1
+        %344 = "arith.extui"(%343) : (i1) -> i32
+        "ttng.wait_barrier"(%341, %344) <{operandSegmentSizes = array<i32: 1, 1, 0, 0>}> {async_task_id = array<i32: 0>} : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> ()
+        %345 = "ttg.memdesc_index"(%56, %337) {async_task_id = array<i32: 0>} : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+        %346 = "arith.constant"() <{value = true}> : () -> i1
+        %347 = "arith.xori"(%340, %346) : (i1, i1) -> i1
+        %348 = "arith.extui"(%347) : (i1) -> i32
+        "ttng.wait_barrier"(%345, %348) <{operandSegmentSizes = array<i32: 1, 1, 0, 0>}> {async_task_id = array<i32: 0>} : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> ()
+        %349 = "ttg.memdesc_index"(%0, %337) {async_task_id = array<i32: 0>} : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+        %350 = "arith.constant"() <{value = true}> {async_task_id = array<i32: 0>} : () -> i1
+        "ttng.barrier_expect"(%349, %350) <{size = 16384 : i32}> {async_task_id = array<i32: 0>} : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i1) -> ()
+        %351 = "ttg.memdesc_index"(%85, %337) {async_task_id = array<i32: 0>} : (!ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>
+        "ttng.async_tma_copy_global_to_local"(%279, %294, %297, %349, %351, %350) <{cache = 1 : i32, evict = 1 : i32, isVolatile = false}> {async_task_id = array<i32: 0>} : (!tt.tensordesc<tensor<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>>>, i32, i32, !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, !ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, i1) -> ()
+        %352 = "arith.constant"() <{value = 4 : i32}> {async_task_id = array<i32: 0>} : () -> i32
+        %353 = "arith.extsi"(%352) {async_task_id = array<i32: 0>} : (i32) -> i64
+        %354 = "arith.divui"(%arg54, %353) {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %355 = "arith.muli"(%354, %353) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %356 = "arith.subi"(%arg54, %355) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %357 = "arith.trunci"(%356) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64) -> i32
+        %358 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 0>} : () -> i64
+        %359 = "arith.andi"(%354, %358) {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %360 = "arith.trunci"(%359) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64) -> i1
+        %361 = "arith.constant"() <{value = 4 : i32}> {async_task_id = array<i32: 0>} : () -> i32
+        %362 = "arith.extsi"(%361) {async_task_id = array<i32: 0>} : (i32) -> i64
+        %363 = "arith.divui"(%arg54, %362) {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %364 = "arith.muli"(%363, %362) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %365 = "arith.subi"(%arg54, %364) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %366 = "arith.trunci"(%365) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64) -> i32
+        %367 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 0>} : () -> i64
+        %368 = "arith.andi"(%363, %367) {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        %369 = "arith.trunci"(%368) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64) -> i1
+        %370 = "ttg.memdesc_index"(%42, %366) {async_task_id = array<i32: 0>} : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+        %371 = "arith.constant"() <{value = true}> : () -> i1
+        %372 = "arith.xori"(%369, %371) : (i1, i1) -> i1
+        %373 = "arith.extui"(%372) : (i1) -> i32
+        "ttng.wait_barrier"(%370, %373) <{operandSegmentSizes = array<i32: 1, 1, 0, 0>}> {async_task_id = array<i32: 0>} : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> ()
+        %374 = "ttg.memdesc_index"(%9, %366) {async_task_id = array<i32: 0>} : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+        %375 = "arith.constant"() <{value = true}> {async_task_id = array<i32: 0>} : () -> i1
+        "ttng.barrier_expect"(%374, %375) <{size = 16384 : i32}> {async_task_id = array<i32: 0>} : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i1) -> ()
+        %376 = "ttg.memdesc_index"(%84, %366) {async_task_id = array<i32: 0>} : (!ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>
+        "ttng.async_tma_copy_global_to_local"(%277, %293, %297, %374, %376, %375) <{cache = 1 : i32, evict = 1 : i32, isVolatile = false}> {async_task_id = array<i32: 0>} : (!tt.tensordesc<tensor<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>>>, i32, i32, !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, !ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, i1) -> ()
+        %377 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 0>} : () -> i64
+        %378 = "arith.addi"(%arg54, %377) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 0>} : (i64, i64) -> i64
+        "scf.yield"(%378) {async_task_id = array<i32: 0>} : (i64) -> ()
+      }) {async_task_id = array<i32: 0>} : (i32, i32, i32, i64) -> i64
+      "ttg.warp_yield"() : () -> ()
+    }, {
+      "ttg.warp_specialize.partitions"() ({
+      ^bb0(%arg31: i32, %arg32: !tt.ptr<bf16>, %arg33: i32, %arg34: i32, %arg35: i32, %arg36: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg37: !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, %arg38: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg39: !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, %arg40: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg41: !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, %arg42: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg43: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg44: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg45: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg46: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg47: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg48: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg49: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>):
+        %178 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 1>} : () -> i64
+        %179 = "arith.constant"() <{value = 8 : i32}> {async_task_id = array<i32: 1>} : () -> i32
+        %180 = "arith.constant"() <{value = 256 : i32}> {async_task_id = array<i32: 1>} : () -> i32
+        %181 = "arith.constant"() <{value = 128 : i32}> {async_task_id = array<i32: 1>} : () -> i32
+        %182 = "arith.constant"() <{value = 64 : i32}> {async_task_id = array<i32: 1>} : () -> i32
+        %183 = "arith.constant"() <{value = 0 : i32}> {async_task_id = array<i32: 1>} : () -> i32
+        %184 = "arith.constant"() <{value = 1 : i32}> {async_task_id = array<i32: 1>} : () -> i32
+        %185 = "arith.constant"() <{value = 127 : i32}> {async_task_id = array<i32: 1>} : () -> i32
+        %186 = "arith.constant"() <{value = 63 : i32}> {async_task_id = array<i32: 1>} : () -> i32
+        %187 = "arith.constant"() <{value = dense<0.000000e+00> : tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>}> {async_task_id = array<i32: 1>} : () -> tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>
+        %188 = "arith.extsi"(%arg31) {async_task_id = array<i32: 1>} : (i32) -> i64
+        %189 = "tt.make_tensor_descriptor"(%arg32, %arg33, %arg34, %188, %178) <{padding = 1 : i32}> {async_task_id = array<i32: 1>} : (!tt.ptr<bf16>, i32, i32, i64, i64) -> !tt.tensordesc<tensor<256x32xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>>>
+        %190 = "tt.get_program_id"() <{axis = 0 : i32}> {async_task_id = array<i32: 1>} : () -> i32
+        %191 = "arith.addi"(%arg34, %185) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i32, i32) -> i32
+        %192 = "arith.divsi"(%191, %181) {async_task_id = array<i32: 1>} : (i32, i32) -> i32
+        %193 = "arith.muli"(%192, %179) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i32, i32) -> i32
+        %194 = "arith.divsi"(%190, %193) {async_task_id = array<i32: 1>} : (i32, i32) -> i32
+        %195 = "arith.muli"(%194, %179) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i32, i32) -> i32
+        %196 = "arith.remsi"(%190, %179) {async_task_id = array<i32: 1>} : (i32, i32) -> i32
+        %197 = "arith.addi"(%195, %196) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i32, i32) -> i32
+        %198 = "arith.remsi"(%190, %193) {async_task_id = array<i32: 1>} : (i32, i32) -> i32
+        %199 = "arith.divsi"(%198, %179) {async_task_id = array<i32: 1>} : (i32, i32) -> i32
+        %200 = "arith.addi"(%arg35, %186) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i32, i32) -> i32
+        %201 = "arith.divsi"(%200, %182) {async_task_id = array<i32: 1>} : (i32, i32) -> i32
+        %202 = "arith.muli"(%197, %180) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i32, i32) -> i32
+        %203 = "arith.muli"(%199, %181) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i32, i32) -> i32
+        %204 = "arith.constant"() <{value = 0 : i64}> {async_task_id = array<i32: 1>} : () -> i64
+        %205:2 = "scf.for"(%183, %201, %184, %187, %204) ({
+        ^bb0(%arg50: i32, %arg51: tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>, %arg52: i64):
+          %214 = "arith.constant"() <{value = 4 : i32}> {async_task_id = array<i32: 1>} : () -> i32
+          %215 = "arith.extsi"(%214) {async_task_id = array<i32: 1>} : (i32) -> i64
+          %216 = "arith.divui"(%arg52, %215) {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          %217 = "arith.muli"(%216, %215) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          %218 = "arith.subi"(%arg52, %217) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          %219 = "arith.trunci"(%218) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64) -> i32
+          %220 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 1>} : () -> i64
+          %221 = "arith.andi"(%216, %220) {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          %222 = "arith.trunci"(%221) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64) -> i1
+          %223 = "arith.constant"() <{value = 4 : i32}> {async_task_id = array<i32: 1>} : () -> i32
+          %224 = "arith.extsi"(%223) {async_task_id = array<i32: 1>} : (i32) -> i64
+          %225 = "arith.divui"(%arg52, %224) {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          %226 = "arith.muli"(%225, %224) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          %227 = "arith.subi"(%arg52, %226) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          %228 = "arith.trunci"(%227) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64) -> i32
+          %229 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 1>} : () -> i64
+          %230 = "arith.andi"(%225, %229) {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          %231 = "arith.trunci"(%230) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64) -> i1
+          %232 = "arith.constant"() <{value = 4 : i32}> {async_task_id = array<i32: 1>} : () -> i32
+          %233 = "arith.extsi"(%232) {async_task_id = array<i32: 1>} : (i32) -> i64
+          %234 = "arith.divui"(%arg52, %233) {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          %235 = "arith.muli"(%234, %233) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          %236 = "arith.subi"(%arg52, %235) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          %237 = "arith.trunci"(%236) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64) -> i32
+          %238 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 1>} : () -> i64
+          %239 = "arith.andi"(%234, %238) {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          %240 = "arith.trunci"(%239) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64) -> i1
+          %241 = "arith.constant"() <{value = 4 : i32}> {async_task_id = array<i32: 1>} : () -> i32
+          %242 = "arith.extsi"(%241) {async_task_id = array<i32: 1>} : (i32) -> i64
+          %243 = "arith.divui"(%arg52, %242) {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          %244 = "arith.muli"(%243, %242) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          %245 = "arith.subi"(%arg52, %244) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          %246 = "arith.trunci"(%245) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64) -> i32
+          %247 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 1>} : () -> i64
+          %248 = "arith.andi"(%243, %247) {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          %249 = "arith.trunci"(%248) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64) -> i1
+          %250 = "ttg.memdesc_index"(%arg36, %228) {async_task_id = array<i32: 1>} : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+          %251 = "arith.extsi"(%231) {async_task_id = array<i32: 1>} : (i1) -> i32
+          "ttng.wait_barrier"(%250, %251) <{operandSegmentSizes = array<i32: 1, 1, 0, 0>}> {async_task_id = array<i32: 1>} : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> ()
+          %252 = "ttg.memdesc_index"(%arg37, %228) {async_task_id = array<i32: 1>} : (!ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>
+          %253 = "ttg.local_load"(%252) {async_task_id = array<i32: 1>} : (!ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>) -> tensor<128x64xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>
+          %254 = "ttg.local_alloc"(%253) {async_task_id = array<i32: 1>} : (tensor<128x64xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>) -> !ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>
+          %255 = "ttg.memdesc_index"(%arg38, %246) {async_task_id = array<i32: 1>} : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+          %256 = "arith.extsi"(%249) {async_task_id = array<i32: 1>} : (i1) -> i32
+          "ttng.wait_barrier"(%255, %256) <{operandSegmentSizes = array<i32: 1, 1, 0, 0>}> {async_task_id = array<i32: 1>} : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> ()
+          %257 = "ttg.memdesc_index"(%arg39, %246) {async_task_id = array<i32: 1>} : (!ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>
+          %258 = "ttg.local_load"(%257) {async_task_id = array<i32: 1>} : (!ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>) -> tensor<128x64xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>
+          %259 = "ttg.local_alloc"(%258) {async_task_id = array<i32: 1>} : (tensor<128x64xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>) -> !ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>
+          %260 = "ttg.memdesc_trans"(%257) <{order = array<i32: 1, 0>}> {async_task_id = array<i32: 1>} : (!ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>) -> !ttg.memdesc<64x128xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = true, elementBitWidth = 16}>, #ttg.shared_memory>
+          %261 = "ttng.warp_group_dot"(%252, %260, %arg51) <{inputPrecision = 0 : i32, isAsync = false, maxNumImpreciseAcc = 0 : i32}> {async_task_id = array<i32: 1>} : (!ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>, !ttg.memdesc<64x128xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = true, elementBitWidth = 16}>, #ttg.shared_memory>, tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>) -> tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>
+          %262 = "ttg.memdesc_index"(%arg43, %228) {async_task_id = array<i32: 1>} : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+          "ttng.arrive_barrier"(%262) <{count = 128 : i32}> {async_task_id = array<i32: 1>} : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+          %263 = "ttg.memdesc_index"(%arg47, %246) {async_task_id = array<i32: 1>} : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+          "ttng.arrive_barrier"(%263) <{count = 128 : i32}> {async_task_id = array<i32: 1>} : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+          %264 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 1>} : () -> i64
+          %265 = "arith.addi"(%arg52, %264) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i64, i64) -> i64
+          "scf.yield"(%261, %265) {async_task_id = array<i32: 1>} : (tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>, i64) -> ()
+        }) {async_task_id = array<i32: 1>} : (i32, i32, i32, tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>, i64) -> (tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>, i64)
+        %206 = "tt.reshape"(%205#0) {async_task_id = array<i32: 1>} : (tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>) -> tensor<128x2x64xf32, #ttg.linear<{register = [[0, 0, 1], [8, 0, 0], [0, 0, 8], [0, 0, 16], [0, 0, 32], [0, 1, 0], [64, 0, 0]], lane = [[0, 0, 2], [0, 0, 4], [1, 0, 0], [2, 0, 0], [4, 0, 0]], warp = [[16, 0, 0], [32, 0, 0]], block = []}>>
+        %207 = "tt.trans"(%206) <{order = array<i32: 0, 2, 1>}> {async_task_id = array<i32: 1>} : (tensor<128x2x64xf32, #ttg.linear<{register = [[0, 0, 1], [8, 0, 0], [0, 0, 8], [0, 0, 16], [0, 0, 32], [0, 1, 0], [64, 0, 0]], lane = [[0, 0, 2], [0, 0, 4], [1, 0, 0], [2, 0, 0], [4, 0, 0]], warp = [[16, 0, 0], [32, 0, 0]], block = []}>>) -> tensor<256x32x2xf32, #ttg.linear<{register = [[0, 1, 0], [8, 0, 0], [0, 8, 0], [0, 16, 0], [0, 32, 0], [0, 0, 1], [64, 0, 0], [128, 0, 0]], lane = [[0, 2, 0], [0, 4, 0], [1, 0, 0], [2, 0, 0], [4, 0, 0]], warp = [[16, 0, 0], [32, 0, 0]], block = []}>>
+        %208:2 = "tt.split"(%207) {async_task_id = array<i32: 1>} : (tensor<256x32x2xf32, #ttg.linear<{register = [[0, 1, 0], [8, 0, 0], [0, 8, 0], [0, 16, 0], [0, 32, 0], [0, 0, 1], [64, 0, 0], [128, 0, 0]], lane = [[0, 2, 0], [0, 4, 0], [1, 0, 0], [2, 0, 0], [4, 0, 0]], warp = [[16, 0, 0], [32, 0, 0]], block = []}>>) -> (tensor<256x32xf32, #ttg.linear<{register = [[0, 1], [8, 0], [0, 8], [0, 16], [64, 0], [128, 0]], lane = [[0, 2], [0, 4], [1, 0], [2, 0], [4, 0]], warp = [[16, 0], [32, 0]], block = []}>>, tensor<256x32xf32, #ttg.linear<{register = [[0, 1], [8, 0], [0, 8], [0, 16], [64, 0], [128, 0]], lane = [[0, 2], [0, 4], [1, 0], [2, 0], [4, 0]], warp = [[16, 0], [32, 0]], block = []}>>)
+        %209 = "arith.truncf"(%208#0) {async_task_id = array<i32: 1>} : (tensor<256x32xf32, #ttg.linear<{register = [[0, 1], [8, 0], [0, 8], [0, 16], [64, 0], [128, 0]], lane = [[0, 2], [0, 4], [1, 0], [2, 0], [4, 0]], warp = [[16, 0], [32, 0]], block = []}>>) -> tensor<256x32xbf16, #ttg.linear<{register = [[0, 1], [8, 0], [0, 8], [0, 16], [0, 32], [64, 0], [128, 0]], lane = [[0, 2], [0, 4], [1, 0], [2, 0], [4, 0]], warp = [[16, 0], [32, 0]], block = []}>>
+        %210 = "ttg.convert_layout"(%209) {async_task_id = array<i32: 1>} : (tensor<256x32xbf16, #ttg.linear<{register = [[0, 1], [8, 0], [0, 8], [0, 16], [0, 32], [64, 0], [128, 0]], lane = [[0, 2], [0, 4], [1, 0], [2, 0], [4, 0]], warp = [[16, 0], [32, 0]], block = []}>>) -> tensor<256x32xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>
+        "tt.descriptor_store"(%189, %210, %202, %203) {async_task_id = array<i32: 1>} : (!tt.tensordesc<tensor<256x32xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>>>, tensor<256x32xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>, i32, i32) -> ()
+        %211 = "arith.truncf"(%208#1) {async_task_id = array<i32: 1>} : (tensor<256x32xf32, #ttg.linear<{register = [[0, 1], [8, 0], [0, 8], [0, 16], [64, 0], [128, 0]], lane = [[0, 2], [0, 4], [1, 0], [2, 0], [4, 0]], warp = [[16, 0], [32, 0]], block = []}>>) -> tensor<256x32xbf16, #ttg.linear<{register = [[0, 1], [8, 0], [0, 8], [0, 16], [0, 32], [64, 0], [128, 0]], lane = [[0, 2], [0, 4], [1, 0], [2, 0], [4, 0]], warp = [[16, 0], [32, 0]], block = []}>>
+        %212 = "ttg.convert_layout"(%211) {async_task_id = array<i32: 1>} : (tensor<256x32xbf16, #ttg.linear<{register = [[0, 1], [8, 0], [0, 8], [0, 16], [0, 32], [64, 0], [128, 0]], lane = [[0, 2], [0, 4], [1, 0], [2, 0], [4, 0]], warp = [[16, 0], [32, 0]], block = []}>>) -> tensor<256x32xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>
+        %213 = "arith.addi"(%203, %182) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 1>} : (i32, i32) -> i32
+        "tt.descriptor_store"(%189, %212, %202, %213) {async_task_id = array<i32: 1>} : (!tt.tensordesc<tensor<256x32xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>>>, tensor<256x32xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>, i32, i32) -> ()
+        "ttg.warp_return"() : () -> ()
+      }, {
+      ^bb0(%arg9: i32, %arg10: !tt.ptr<bf16>, %arg11: i32, %arg12: i32, %arg13: i32, %arg14: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg15: !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, %arg16: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg17: !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, %arg18: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg19: !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, %arg20: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg21: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg22: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg23: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg24: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg25: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg26: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, %arg27: !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>):
+        %86 = "arith.constant"() <{value = 32 : i32}> {async_task_id = array<i32: 2>} : () -> i32
+        %87 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 2>} : () -> i64
+        %88 = "arith.constant"() <{value = 8 : i32}> {async_task_id = array<i32: 2>} : () -> i32
+        %89 = "arith.constant"() <{value = 256 : i32}> {async_task_id = array<i32: 2>} : () -> i32
+        %90 = "arith.constant"() <{value = 128 : i32}> {async_task_id = array<i32: 2>} : () -> i32
+        %91 = "arith.constant"() <{value = 64 : i32}> {async_task_id = array<i32: 2>} : () -> i32
+        %92 = "arith.constant"() <{value = 0 : i32}> {async_task_id = array<i32: 2>} : () -> i32
+        %93 = "arith.constant"() <{value = 1 : i32}> {async_task_id = array<i32: 2>} : () -> i32
+        %94 = "arith.constant"() <{value = 127 : i32}> {async_task_id = array<i32: 2>} : () -> i32
+        %95 = "arith.constant"() <{value = 63 : i32}> {async_task_id = array<i32: 2>} : () -> i32
+        %96 = "arith.constant"() <{value = dense<0.000000e+00> : tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>}> {async_task_id = array<i32: 2>} : () -> tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>
+        %97 = "arith.extsi"(%arg9) {async_task_id = array<i32: 2>} : (i32) -> i64
+        %98 = "tt.make_tensor_descriptor"(%arg10, %arg11, %arg12, %97, %87) <{padding = 1 : i32}> {async_task_id = array<i32: 2>} : (!tt.ptr<bf16>, i32, i32, i64, i64) -> !tt.tensordesc<tensor<256x32xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>>>
+        %99 = "tt.get_program_id"() <{axis = 0 : i32}> {async_task_id = array<i32: 2>} : () -> i32
+        %100 = "arith.addi"(%arg12, %94) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        %101 = "arith.divsi"(%100, %90) {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        %102 = "arith.muli"(%101, %88) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        %103 = "arith.divsi"(%99, %102) {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        %104 = "arith.muli"(%103, %88) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        %105 = "arith.remsi"(%99, %88) {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        %106 = "arith.addi"(%104, %105) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        %107 = "arith.remsi"(%99, %102) {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        %108 = "arith.divsi"(%107, %88) {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        %109 = "arith.addi"(%arg13, %95) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        %110 = "arith.divsi"(%109, %91) {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        %111 = "arith.muli"(%106, %89) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        %112 = "arith.addi"(%111, %90) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        %113 = "arith.muli"(%108, %90) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        %114 = "arith.addi"(%113, %86) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        %115 = "arith.constant"() <{value = 0 : i64}> {async_task_id = array<i32: 2>} : () -> i64
+        %116:2 = "scf.for"(%92, %110, %93, %96, %115) ({
+        ^bb0(%arg28: i32, %arg29: tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>, %arg30: i64):
+          %126 = "arith.constant"() <{value = 4 : i32}> {async_task_id = array<i32: 2>} : () -> i32
+          %127 = "arith.extsi"(%126) {async_task_id = array<i32: 2>} : (i32) -> i64
+          %128 = "arith.divui"(%arg30, %127) {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          %129 = "arith.muli"(%128, %127) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          %130 = "arith.subi"(%arg30, %129) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          %131 = "arith.trunci"(%130) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64) -> i32
+          %132 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 2>} : () -> i64
+          %133 = "arith.andi"(%128, %132) {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          %134 = "arith.trunci"(%133) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64) -> i1
+          %135 = "arith.constant"() <{value = 4 : i32}> {async_task_id = array<i32: 2>} : () -> i32
+          %136 = "arith.extsi"(%135) {async_task_id = array<i32: 2>} : (i32) -> i64
+          %137 = "arith.divui"(%arg30, %136) {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          %138 = "arith.muli"(%137, %136) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          %139 = "arith.subi"(%arg30, %138) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          %140 = "arith.trunci"(%139) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64) -> i32
+          %141 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 2>} : () -> i64
+          %142 = "arith.andi"(%137, %141) {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          %143 = "arith.trunci"(%142) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64) -> i1
+          %144 = "arith.constant"() <{value = 4 : i32}> {async_task_id = array<i32: 2>} : () -> i32
+          %145 = "arith.extsi"(%144) {async_task_id = array<i32: 2>} : (i32) -> i64
+          %146 = "arith.divui"(%arg30, %145) {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          %147 = "arith.muli"(%146, %145) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          %148 = "arith.subi"(%arg30, %147) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          %149 = "arith.trunci"(%148) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64) -> i32
+          %150 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 2>} : () -> i64
+          %151 = "arith.andi"(%146, %150) {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          %152 = "arith.trunci"(%151) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64) -> i1
+          %153 = "arith.constant"() <{value = 4 : i32}> {async_task_id = array<i32: 2>} : () -> i32
+          %154 = "arith.extsi"(%153) {async_task_id = array<i32: 2>} : (i32) -> i64
+          %155 = "arith.divui"(%arg30, %154) {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          %156 = "arith.muli"(%155, %154) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          %157 = "arith.subi"(%arg30, %156) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          %158 = "arith.trunci"(%157) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64) -> i32
+          %159 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 2>} : () -> i64
+          %160 = "arith.andi"(%155, %159) {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          %161 = "arith.trunci"(%160) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64) -> i1
+          %162 = "ttg.memdesc_index"(%arg18, %158) {async_task_id = array<i32: 2>} : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+          %163 = "arith.extsi"(%161) {async_task_id = array<i32: 2>} : (i1) -> i32
+          "ttng.wait_barrier"(%162, %163) <{operandSegmentSizes = array<i32: 1, 1, 0, 0>}> {async_task_id = array<i32: 2>} : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> ()
+          %164 = "ttg.memdesc_index"(%arg19, %158) {async_task_id = array<i32: 2>} : (!ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>
+          %165 = "ttg.local_load"(%164) {async_task_id = array<i32: 2>} : (!ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>) -> tensor<128x64xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>
+          %166 = "ttg.local_alloc"(%165) {async_task_id = array<i32: 2>} : (tensor<128x64xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>) -> !ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>
+          %167 = "ttg.memdesc_index"(%arg16, %140) {async_task_id = array<i32: 2>} : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+          %168 = "arith.extsi"(%143) {async_task_id = array<i32: 2>} : (i1) -> i32
+          "ttng.wait_barrier"(%167, %168) <{operandSegmentSizes = array<i32: 1, 1, 0, 0>}> {async_task_id = array<i32: 2>} : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> ()
+          %169 = "ttg.memdesc_index"(%arg17, %140) {async_task_id = array<i32: 2>} : (!ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>
+          %170 = "ttg.local_load"(%169) {async_task_id = array<i32: 2>} : (!ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>) -> tensor<128x64xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>
+          %171 = "ttg.local_alloc"(%170) {async_task_id = array<i32: 2>} : (tensor<128x64xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>) -> !ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>
+          %172 = "ttg.memdesc_trans"(%169) <{order = array<i32: 1, 0>}> {async_task_id = array<i32: 2>} : (!ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>) -> !ttg.memdesc<64x128xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = true, elementBitWidth = 16}>, #ttg.shared_memory>
+          %173 = "ttng.warp_group_dot"(%164, %172, %arg29) <{inputPrecision = 0 : i32, isAsync = false, maxNumImpreciseAcc = 0 : i32}> {async_task_id = array<i32: 2>} : (!ttg.memdesc<128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory>, !ttg.memdesc<64x128xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = true, elementBitWidth = 16}>, #ttg.shared_memory>, tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>) -> tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>
+          %174 = "ttg.memdesc_index"(%arg23, %158) {async_task_id = array<i32: 2>} : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+          "ttng.arrive_barrier"(%174) <{count = 128 : i32}> {async_task_id = array<i32: 2>} : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+          %175 = "ttg.memdesc_index"(%arg27, %140) {async_task_id = array<i32: 2>} : (!ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, i32) -> !ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>
+          "ttng.arrive_barrier"(%175) <{count = 128 : i32}> {async_task_id = array<i32: 2>} : (!ttg.memdesc<1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
+          %176 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 2>} : () -> i64
+          %177 = "arith.addi"(%arg30, %176) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64, i64) -> i64
+          "scf.yield"(%173, %177) {async_task_id = array<i32: 2>} : (tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>, i64) -> ()
+        }) {async_task_id = array<i32: 2>} : (i32, i32, i32, tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>, i64) -> (tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>, i64)
+        %117 = "tt.reshape"(%116#0) {async_task_id = array<i32: 2>} : (tensor<128x128xf32, #ttg.nvidia_mma<{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]}>>) -> tensor<128x2x64xf32, #ttg.linear<{register = [[0, 0, 1], [8, 0, 0], [0, 0, 8], [0, 0, 16], [0, 0, 32], [0, 1, 0], [64, 0, 0]], lane = [[0, 0, 2], [0, 0, 4], [1, 0, 0], [2, 0, 0], [4, 0, 0]], warp = [[16, 0, 0], [32, 0, 0]], block = []}>>
+        %118 = "tt.trans"(%117) <{order = array<i32: 0, 2, 1>}> {async_task_id = array<i32: 2>} : (tensor<128x2x64xf32, #ttg.linear<{register = [[0, 0, 1], [8, 0, 0], [0, 0, 8], [0, 0, 16], [0, 0, 32], [0, 1, 0], [64, 0, 0]], lane = [[0, 0, 2], [0, 0, 4], [1, 0, 0], [2, 0, 0], [4, 0, 0]], warp = [[16, 0, 0], [32, 0, 0]], block = []}>>) -> tensor<256x32x2xf32, #ttg.linear<{register = [[0, 1, 0], [8, 0, 0], [0, 8, 0], [0, 16, 0], [0, 32, 0], [0, 0, 1], [64, 0, 0], [128, 0, 0]], lane = [[0, 2, 0], [0, 4, 0], [1, 0, 0], [2, 0, 0], [4, 0, 0]], warp = [[16, 0, 0], [32, 0, 0]], block = []}>>
+        %119:2 = "tt.split"(%118) {async_task_id = array<i32: 2>} : (tensor<256x32x2xf32, #ttg.linear<{register = [[0, 1, 0], [8, 0, 0], [0, 8, 0], [0, 16, 0], [0, 32, 0], [0, 0, 1], [64, 0, 0], [128, 0, 0]], lane = [[0, 2, 0], [0, 4, 0], [1, 0, 0], [2, 0, 0], [4, 0, 0]], warp = [[16, 0, 0], [32, 0, 0]], block = []}>>) -> (tensor<256x32xf32, #ttg.linear<{register = [[0, 1], [8, 0], [0, 8], [0, 16], [64, 0], [128, 0]], lane = [[0, 2], [0, 4], [1, 0], [2, 0], [4, 0]], warp = [[16, 0], [32, 0]], block = []}>>, tensor<256x32xf32, #ttg.linear<{register = [[0, 1], [8, 0], [0, 8], [0, 16], [64, 0], [128, 0]], lane = [[0, 2], [0, 4], [1, 0], [2, 0], [4, 0]], warp = [[16, 0], [32, 0]], block = []}>>)
+        %120 = "arith.truncf"(%119#0) {async_task_id = array<i32: 2>} : (tensor<256x32xf32, #ttg.linear<{register = [[0, 1], [8, 0], [0, 8], [0, 16], [64, 0], [128, 0]], lane = [[0, 2], [0, 4], [1, 0], [2, 0], [4, 0]], warp = [[16, 0], [32, 0]], block = []}>>) -> tensor<256x32xbf16, #ttg.linear<{register = [[0, 1], [8, 0], [0, 8], [0, 16], [0, 32], [64, 0], [128, 0]], lane = [[0, 2], [0, 4], [1, 0], [2, 0], [4, 0]], warp = [[16, 0], [32, 0]], block = []}>>
+        %121 = "ttg.convert_layout"(%120) {async_task_id = array<i32: 2>} : (tensor<256x32xbf16, #ttg.linear<{register = [[0, 1], [8, 0], [0, 8], [0, 16], [0, 32], [64, 0], [128, 0]], lane = [[0, 2], [0, 4], [1, 0], [2, 0], [4, 0]], warp = [[16, 0], [32, 0]], block = []}>>) -> tensor<256x32xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>
+        "tt.descriptor_store"(%98, %121, %112, %114) {async_task_id = array<i32: 2>} : (!tt.tensordesc<tensor<256x32xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>>>, tensor<256x32xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>, i32, i32) -> ()
+        %122 = "arith.truncf"(%119#1) {async_task_id = array<i32: 2>} : (tensor<256x32xf32, #ttg.linear<{register = [[0, 1], [8, 0], [0, 8], [0, 16], [64, 0], [128, 0]], lane = [[0, 2], [0, 4], [1, 0], [2, 0], [4, 0]], warp = [[16, 0], [32, 0]], block = []}>>) -> tensor<256x32xbf16, #ttg.linear<{register = [[0, 1], [8, 0], [0, 8], [0, 16], [0, 32], [64, 0], [128, 0]], lane = [[0, 2], [0, 4], [1, 0], [2, 0], [4, 0]], warp = [[16, 0], [32, 0]], block = []}>>
+        %123 = "ttg.convert_layout"(%122) {async_task_id = array<i32: 2>} : (tensor<256x32xbf16, #ttg.linear<{register = [[0, 1], [8, 0], [0, 8], [0, 16], [0, 32], [64, 0], [128, 0]], lane = [[0, 2], [0, 4], [1, 0], [2, 0], [4, 0]], warp = [[16, 0], [32, 0]], block = []}>>) -> tensor<256x32xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>
+        %124 = "arith.addi"(%113, %91) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        %125 = "arith.addi"(%124, %86) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i32, i32) -> i32
+        "tt.descriptor_store"(%98, %123, %112, %125) {async_task_id = array<i32: 2>} : (!tt.tensordesc<tensor<256x32xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>>>, tensor<256x32xbf16, #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [4, 8], warpsPerCTA = [4, 1], order = [1, 0]}>>, i32, i32) -> ()
+        "ttg.warp_return"() : () -> ()
+      }) : () -> ()
+    }) : (i32, !tt.ptr<bf16>, i32, i32, i32, !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x128x64xbf16, #ttg.nvmma_shared<{swizzlingByteWidth = 128, transposed = false, elementBitWidth = 16}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>, !ttg.memdesc<4x1xi64, #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0]}>, #ttg.shared_memory, mutable>) -> ()
     "tt.return"() : () -> ()
   }) {noinline = false} : () -> ()
 }) {"ttg.num-ctas" = 1 : i32, "ttg.num-warps" = 4 : i32, ttg.target = "cuda:90", "ttg.threads-per-warp" = 32 : i32} : () -> ()
@@ -6393,9 +6871,9 @@ module {
           %acc_55 = "ttg.local_alloc"(%106) {async_task_id = array<i32: 2>} : (tensor<128x64xbf16, #blocked>) -> !ttg.memdesc<128x64xbf16, #shared1, #smem> loc(#loc63)
           %acc_56 = "ttg.memdesc_trans"(%105) <{order = array<i32: 1, 0>}> {async_task_id = array<i32: 2>} : (!ttg.memdesc<128x64xbf16, #shared1, #smem>) -> !ttg.memdesc<64x128xbf16, #shared2, #smem> loc(#loc63)
           %acc_57 = "ttng.warp_group_dot"(%101, %acc_56, %arg29) <{inputPrecision = 0 : i32, isAsync = false, maxNumImpreciseAcc = 0 : i32}> {async_task_id = array<i32: 2>} : (!ttg.memdesc<128x64xbf16, #shared1, #smem>, !ttg.memdesc<64x128xbf16, #shared2, #smem>, tensor<128x128xf32, #mma>) -> tensor<128x128xf32, #mma> loc(#loc64)
-          %107 = "ttg.memdesc_index"(%arg27, %b_32) {async_task_id = array<i32: 2>} : (!ttg.memdesc<4x1xi64, #shared, #smem, mutable>, i32) -> !ttg.memdesc<1xi64, #shared, #smem, mutable> loc(#loc)
+          %107 = "ttg.memdesc_index"(%arg23, %a_50) {async_task_id = array<i32: 2>} : (!ttg.memdesc<4x1xi64, #shared, #smem, mutable>, i32) -> !ttg.memdesc<1xi64, #shared, #smem, mutable> loc(#loc)
           "ttng.arrive_barrier"(%107) <{count = 128 : i32}> {async_task_id = array<i32: 2>} : (!ttg.memdesc<1xi64, #shared, #smem, mutable>) -> () loc(#loc64)
-          %108 = "ttg.memdesc_index"(%arg23, %a_50) {async_task_id = array<i32: 2>} : (!ttg.memdesc<4x1xi64, #shared, #smem, mutable>, i32) -> !ttg.memdesc<1xi64, #shared, #smem, mutable> loc(#loc)
+          %108 = "ttg.memdesc_index"(%arg27, %b_32) {async_task_id = array<i32: 2>} : (!ttg.memdesc<4x1xi64, #shared, #smem, mutable>, i32) -> !ttg.memdesc<1xi64, #shared, #smem, mutable> loc(#loc)
           "ttng.arrive_barrier"(%108) <{count = 128 : i32}> {async_task_id = array<i32: 2>} : (!ttg.memdesc<1xi64, #shared, #smem, mutable>) -> () loc(#loc64)
           %acc_58 = "arith.constant"() <{value = 1 : i64}> {async_task_id = array<i32: 2>} : () -> i64 loc(#loc59)
           %acc_59 = "arith.addi"(%acc_18, %acc_58) <{overflowFlags = #arith.overflow<none>}> {async_task_id = array<i32: 2>} : (i64, i64) -> i64 loc(#loc59)
