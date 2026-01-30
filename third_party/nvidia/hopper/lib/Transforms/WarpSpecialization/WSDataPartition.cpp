@@ -1201,6 +1201,69 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
     // recursively set async task ids for child ops
     newOp->walk(
         [&](Operation *childOp) { setAsyncTaskIds(childOp, sliceTaskIds); });
+  } else if (auto reshapeOp = dyn_cast<ReshapeOp>(op)) {
+  // 1) 先 slice operand
+  sliceOp(reshapeOp.getOperand(), offset, mappings, reverseMappings, partitionScheme);
+
+  // 2) 计算 reshape 的输出 sliced type
+  Value v = op->getResult(0);
+
+  // 原始输出类型（注意：这里通常是 RankedTensorType）
+  auto oldOutTy = dyn_cast<RankedTensorType>(v.getType());
+  if (!oldOutTy)
+    llvm_unreachable("tt.reshape result is not RankedTensorType");
+
+  SmallVector<int64_t> shape = getShape(oldOutTy);
+  int sliceSize = shape[dim] / numOfPartitions;
+  shape[dim] = sliceSize;
+
+  // encoding 先“沿用 reshape 输出的 encoding”
+  // 因为 reshape 本身已经决定输出是 #ttg.linear<...> 这种 encoding 了
+  Type newOutTy = RankedTensorType::get(shape, oldOutTy.getElementType(),
+                                       oldOutTy.getEncoding());
+
+  // 3) clone op（operand 会被 mappings 替换成 sliced operand）
+  builder.setInsertionPoint(op);
+  newOp = builder.clone(*op, mappings);
+  setAsyncTaskIds(newOp, sliceTaskIds);  // 如果你这段 pass 有 sliceTaskIds 的约定
+
+  // 4) 更新 result type + mappings
+  auto newV = newOp->getResult(0);
+  newV.setType(newOutTy);
+
+  mappings.map(v, newV);
+  reverseMappings.map(newV, v);
+  } else if (auto splitOp = dyn_cast<SplitOp>(op)) {
+  // 1) slice operand first (the input to split)
+  sliceOp(splitOp.getOperand(), offset, mappings, reverseMappings, partitionScheme);
+
+  // 2) clone split with sliced operand
+  builder.setInsertionPoint(op);
+  newOp = builder.clone(*op, mappings);
+  setAsyncTaskIds(newOp, sliceTaskIds);
+
+  // 3) update BOTH result types (multi-result op!)
+  // We slice along WS partition dim, NOT along the split dimension (the trailing '2').
+  // Each result keeps rank-2: [256,64], but the partitioned dim shrinks.
+  for (unsigned r = 0; r < op->getNumResults(); ++r) {
+    Value oldRes = op->getResult(r);
+    Value newRes = newOp->getResult(r);
+
+    auto oldTy = dyn_cast<RankedTensorType>(oldRes.getType());
+    if (!oldTy)
+      llvm_unreachable("tt.split result is not RankedTensorType");
+
+    SmallVector<int64_t> shape(oldTy.getShape().begin(), oldTy.getShape().end());
+    int sliceSize = shape[dim] / numOfPartitions;
+    shape[dim] = sliceSize;
+
+    auto newTy = RankedTensorType::get(shape, oldTy.getElementType(),
+                                       oldTy.getEncoding());
+    newRes.setType(newTy);
+
+    mappings.map(oldRes, newRes);
+    reverseMappings.map(newRes, oldRes);
+  }
   } else {
     op->emitError("unsupported op type in WSDataPartition");
     llvm::errs() << "[WSDataPartition] unsupported op: " << op->getName() << "\n";
