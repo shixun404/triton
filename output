@@ -6332,6 +6332,10 @@ module attributes {"ttg.num-ctas" = 1 : i32, "ttg.num-warps" = 4 : i32, ttg.targ
 
 
 /home/tiger/triton/test.py:80:26: error: result shape must match the permutation of the source shape
+  srcShape=128, 2, 64
+  order=0, 2, 1
+  expected(retShape)=128, 64, 2
+  got(dstShape)=256, 32, 2
     acc = tl.permute(acc, (0, 2, 1))
                          ^
 module {
