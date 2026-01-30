@@ -147,6 +147,12 @@ void lowerTokenOperations(Operation *parentOp, int numCTAs,
           builder, loc, singleBarrierMemDescType, bufferEmptyArray, idx);
       ttng::InitBarrierOp::create(builder, loc, barrierEmptyView,
                                   bufferEmptyCount);
+      // Prime the empty barrier so that the producer can acquire immediately at
+      // the beginning of the pipeline. Without this, the producer's initial
+      // wait on the empty barrier parity can spin forever (no consumer has
+      // released yet).
+      ttng::ArriveBarrierOp::create(builder, loc, barrierEmptyView,
+                                   bufferEmptyCount);
     }
 
     // CTA-local sync: ensure barrier initialization is visible within the CTA.
