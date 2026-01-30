@@ -3,6 +3,7 @@
 #include "mlir/Transforms/RegionUtils.h"
 #include "nvidia/hopper/include/Transforms/Passes.h"
 #include "triton/Analysis/Utility.h"
+#include "triton/Dialect/Triton/IR/Dialect.h"
 #include "triton/Dialect/TritonGPU/IR/Dialect.h"
 #include "triton/Dialect/TritonGPU/Transforms/Utility.h"
 #include "triton/Dialect/TritonNvidiaGPU/IR/Dialect.h"
@@ -1204,93 +1205,93 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
     newOp->walk(
         [&](Operation *childOp) { setAsyncTaskIds(childOp, sliceTaskIds); });
   } else if (auto reshapeOp = dyn_cast<ReshapeOp>(op)) {
+    // 1) slice operand first
+    sliceOp(reshapeOp.getSrc(), offset, mappings, reverseMappings,
+            partitionScheme);
+    Value newSrc = mappings.lookupOrNull(reshapeOp.getSrc());
+    assert(newSrc && "reshape src not sliced");
 
-  llvm::errs() << "\n[WSDataPartition] HIT SplitOp (intentional crash for tracing)\n";
-  llvm::errs() << "  loc: " << op->getLoc() << "\n";
-  llvm::errs() << "  dim=" << dim << " offset=" << offset
-               << " numOfPartitions=" << numOfPartitions << "\n";
-  llvm::errs() << "  op: ";
-  op->print(llvm::errs());
-  llvm::errs() << "\n";
+    // 2) compute sliced result type for this partition
+    auto oldOutTy = dyn_cast<RankedTensorType>(reshapeOp.getResult().getType());
+    auto newSrcTy = dyn_cast<RankedTensorType>(newSrc.getType());
+    if (!oldOutTy || !newSrcTy)
+      llvm_unreachable("tt.reshape expects RankedTensorType src/dst");
 
-  // // 更详细：把整个 function dump 出来
-  // if (auto *parent = op->getParentOp()) {
-  //   if (auto func = parent->getParentOfType<mlir::triton::FuncOp>()) {
-  //     llvm::errs() << "\n--- parent tt.func ---\n";
-  //     func.dump();
-  //     llvm::errs() << "\n----------------------\n";
-  //   }
-  // }
+    SmallVector<int64_t> newOutShape(oldOutTy.getShape().begin(),
+                                    oldOutTy.getShape().end());
+    assert(dim < newOutShape.size() && "partition dim out of range for reshape");
+    int64_t sliceSize = newOutShape[dim] / numOfPartitions;
+    newOutShape[dim] = sliceSize;
 
-  // 打印 C++ stacktrace（需要符号化环境）
-  llvm::errs() << "\n--- stacktrace ---\n";
-  llvm::sys::PrintStackTrace(llvm::errs());
-  llvm::errs() << "\n------------------\n";
+    Attribute dstEnc;
+    Attribute srcEnc = newSrcTy.getEncoding();
+    if (srcEnc) {
+      auto *iface = cast<triton::DialectInferLayoutInterface>(&srcEnc.getDialect());
+      if (failed(iface->inferReshapeOpEncoding(newSrcTy.getShape(), srcEnc,
+                                               newOutShape, dstEnc,
+                                               op->getLoc()))) {
+        op->emitError("failed to infer reshape encoding for sliced operand");
+        llvm_unreachable("inferReshapeOpEncoding failed");
+      }
+    }
+    auto newOutTy = RankedTensorType::get(newOutShape, oldOutTy.getElementType(),
+                                         dstEnc);
 
-  // 直接终止（用 abort 更明确；也可以用 llvm_unreachable）
-  abort();
-  // 1) 先 slice operand
-  sliceOp(reshapeOp.getOperand(), offset, mappings, reverseMappings, partitionScheme);
+    // 3) clone op (preserve allow_reorder / efficient_layout attrs)
+    builder.setInsertionPoint(op);
+    newOp = builder.clone(*op, mappings);
+    setAsyncTaskIds(newOp, sliceTaskIds);
 
-  // 2) 计算 reshape 的输出 sliced type
-  Value v = op->getResult(0);
-
-  // 原始输出类型（注意：这里通常是 RankedTensorType）
-  auto oldOutTy = dyn_cast<RankedTensorType>(v.getType());
-  if (!oldOutTy)
-    llvm_unreachable("tt.reshape result is not RankedTensorType");
-
-  SmallVector<int64_t> shape = getShape(oldOutTy);
-  int sliceSize = shape[dim] / numOfPartitions;
-  shape[dim] = sliceSize;
-
-  // encoding 先“沿用 reshape 输出的 encoding”
-  // 因为 reshape 本身已经决定输出是 #ttg.linear<...> 这种 encoding 了
-  Type newOutTy = RankedTensorType::get(shape, oldOutTy.getElementType(),
-                                       oldOutTy.getEncoding());
-
-  // 3) clone op（operand 会被 mappings 替换成 sliced operand）
-  builder.setInsertionPoint(op);
-  newOp = builder.clone(*op, mappings);
-  setAsyncTaskIds(newOp, sliceTaskIds);  // 如果你这段 pass 有 sliceTaskIds 的约定
-
-  // 4) 更新 result type + mappings
-  auto newV = newOp->getResult(0);
-  newV.setType(newOutTy);
-
-  mappings.map(v, newV);
-  reverseMappings.map(newV, v);
-  } else if (auto splitOp = dyn_cast<SplitOp>(op)) {
-  // 1) slice operand first (the input to split)
-  sliceOp(splitOp.getOperand(), offset, mappings, reverseMappings, partitionScheme);
-
-  // 2) clone split with sliced operand
-  builder.setInsertionPoint(op);
-  newOp = builder.clone(*op, mappings);
-  setAsyncTaskIds(newOp, sliceTaskIds);
-
-  // 3) update BOTH result types (multi-result op!)
-  // We slice along WS partition dim, NOT along the split dimension (the trailing '2').
-  // Each result keeps rank-2: [256,64], but the partitioned dim shrinks.
-  for (unsigned r = 0; r < op->getNumResults(); ++r) {
-    Value oldRes = op->getResult(r);
-    Value newRes = newOp->getResult(r);
-
-    auto oldTy = dyn_cast<RankedTensorType>(oldRes.getType());
-    if (!oldTy)
-      llvm_unreachable("tt.split result is not RankedTensorType");
-
-    SmallVector<int64_t> shape(oldTy.getShape().begin(), oldTy.getShape().end());
-    int sliceSize = shape[dim] / numOfPartitions;
-    shape[dim] = sliceSize;
-
-    auto newTy = RankedTensorType::get(shape, oldTy.getElementType(),
-                                       oldTy.getEncoding());
-    newRes.setType(newTy);
-
+    // 4) update result type + value mappings
+    Value oldRes = op->getResult(0);
+    Value newRes = newOp->getResult(0);
+    newRes.setType(newOutTy);
     mappings.map(oldRes, newRes);
     reverseMappings.map(newRes, oldRes);
-  }
+  } else if (auto splitOp = dyn_cast<SplitOp>(op)) {
+    // 1) slice operand first (the input to split)
+    sliceOp(splitOp.getSrc(), offset, mappings, reverseMappings,
+            partitionScheme);
+    Value newSrc = mappings.lookupOrNull(splitOp.getSrc());
+    assert(newSrc && "split src not sliced");
+
+    // 2) infer correct result type/encoding from the sliced src
+    auto newSrcTy = dyn_cast<RankedTensorType>(newSrc.getType());
+    if (!newSrcTy)
+      llvm_unreachable("tt.split expects RankedTensorType src");
+    auto srcShape = newSrcTy.getShape();
+    if (srcShape.empty() || srcShape.back() != 2) {
+      op->emitError("tt.split: last dimension of sliced input tensor must be 2");
+      llvm_unreachable("invalid tt.split input after slicing");
+    }
+
+    ArrayRef<int64_t> retShape(srcShape.begin(), srcShape.end() - 1);
+    Attribute retEnc;
+    Attribute srcEnc = newSrcTy.getEncoding();
+    if (srcEnc) {
+      auto *iface = cast<triton::DialectInferLayoutInterface>(&srcEnc.getDialect());
+      if (failed(iface->inferSplitOpEncoding(srcEnc, retEnc, srcShape,
+                                             op->getLoc()))) {
+        op->emitError("failed to infer split encoding for sliced operand");
+        llvm_unreachable("inferSplitOpEncoding failed");
+      }
+    }
+    auto retTy =
+        RankedTensorType::get(retShape, newSrcTy.getElementType(), retEnc);
+
+    // 3) clone split with sliced operand
+    builder.setInsertionPoint(op);
+    newOp = builder.clone(*op, mappings);
+    setAsyncTaskIds(newOp, sliceTaskIds);
+
+    // 4) update BOTH result types (multi-result op!) + mappings
+    for (unsigned r = 0; r < op->getNumResults(); ++r) {
+      Value oldRes = op->getResult(r);
+      Value newRes = newOp->getResult(r);
+      newRes.setType(retTy);
+      mappings.map(oldRes, newRes);
+      reverseMappings.map(newRes, oldRes);
+    }
   } else {
     op->emitError("unsupported op type in WSDataPartition");
     llvm::errs() << "[WSDataPartition] unsupported op: " << op->getName() << "\n";
