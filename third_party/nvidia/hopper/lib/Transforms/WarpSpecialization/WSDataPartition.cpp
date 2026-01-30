@@ -199,56 +199,6 @@ static SmallVector<int64_t> getShape(Type type) {
 
 static SmallVector<int64_t> getShape(Value v) { return getShape(v.getType()); }
 
-static SmallVector<int64_t> applyPermutation(ArrayRef<int64_t> shape,
-                                             ArrayRef<int32_t> order) {
-  assert(shape.size() == order.size() && "order rank mismatch");
-  SmallVector<int64_t> ret(order.size());
-  for (unsigned i = 0; i < order.size(); ++i) {
-    unsigned srcDim = static_cast<unsigned>(order[i]);
-    assert(srcDim < shape.size() && "order out of range");
-    ret[i] = shape[srcDim];
-  }
-  return ret;
-}
-
-// Map the partitioned dimension through a trans op.
-//
-// For TransOp, semantics are: result[i] = src[order[i]].
-// - Backward traversal (result -> src): dim becomes order[dim].
-// - Forward traversal  (src -> result): dim becomes inverse(order)[dim].
-static unsigned transMapBackward(Operation *op, unsigned dim) {
-  if (dim == DataPartitionScheme::noOpPartitionDim)
-    return dim;
-  if (auto transOp = dyn_cast<TransOp>(op)) {
-    auto order = transOp.getOrder().asArrayRef();
-    assert(dim < order.size() && "dim out of range for trans");
-    return static_cast<unsigned>(order[dim]);
-  }
-  if (auto transOp = dyn_cast<MemDescTransOp>(op)) {
-    auto order = transOp.getOrder().asArrayRef();
-    assert(dim < order.size() && "dim out of range for memdesc.trans");
-    return static_cast<unsigned>(order[dim]);
-  }
-  return dim;
-}
-
-static unsigned transMapForward(Operation *op, unsigned dim) {
-  if (dim == DataPartitionScheme::noOpPartitionDim)
-    return dim;
-  auto findInverse = [&](ArrayRef<int32_t> order) -> unsigned {
-    for (unsigned i = 0; i < order.size(); ++i) {
-      if (static_cast<unsigned>(order[i]) == dim)
-        return i;
-    }
-    llvm_unreachable("dim not present in trans order");
-  };
-  if (auto transOp = dyn_cast<TransOp>(op))
-    return findInverse(transOp.getOrder().asArrayRef());
-  if (auto transOp = dyn_cast<MemDescTransOp>(op))
-    return findInverse(transOp.getOrder().asArrayRef());
-  return dim;
-}
-
 static bool needToSlice(Value v, unsigned dim, int size) {
   if (dim == DataPartitionScheme::noOpPartitionDim)
     return true;
@@ -308,8 +258,9 @@ static bool getBackwardSliceToPartition(Value v,
     }
     partitionScheme.opPartitionDims[op] = currentDim;
 
-    // Map dim through trans when traversing backward (result -> src).
-    currentDim = transMapBackward(op, currentDim);
+    // Flip dim when op is trans
+    if (isa<TransOp, MemDescTransOp>(op))
+      currentDim = partitionScheme.flipPartitionDim(currentDim);
 
     if (auto expandDimsOp = dyn_cast<ExpandDimsOp>(op)) {
       // currentDim is the dim after expansion.
@@ -409,8 +360,9 @@ static bool getForwardSliceToPartition(Value v,
   unsigned originalDim = currentDim;
   for (Operation *depOp : v.getUsers()) {
     currentDim = originalDim;
-    // Map dim through trans when traversing forward (src -> result).
-    currentDim = transMapForward(depOp, currentDim);
+    // Flip dim when op is trans
+    if (isa<TransOp, MemDescTransOp>(depOp))
+      currentDim = partitionScheme.flipPartitionDim(currentDim);
 
     // Check dim compatibility
     if (!partitionScheme.ops.insert(depOp)) {
@@ -750,8 +702,8 @@ static void rewriteRematerializedOps(triton::FuncOp &funcOp,
                "user not partitioned");
         unsigned userDim = partitionScheme.opPartitionDims[user];
         if (isa<TransOp, MemDescTransOp>(user)) {
-          // User is trans: compare against the dim on trans's operand (src).
-          userDim = transMapBackward(user, userDim);
+          // flip userDim for trans
+          userDim = partitionScheme.flipPartitionDim(userDim);
         } else if (auto dotOp = dyn_cast<nvidia_gpu::WarpGroupDotOp>(user)) {
           // infer userDim for dot
           assert(partitionScheme.dotPartitionOperand.contains(user) &&
@@ -1070,66 +1022,29 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
   } else if (isa<TransOp, MemDescTransOp>(op)) {
     sliceOp(op->getOperand(0), offset, mappings, reverseMappings,
             partitionScheme);
-    // Recompute the result type from the (possibly sliced) operand + order.
-    Value oldSrc = op->getOperand(0);
-    Value newSrc = mappings.lookupOrNull(oldSrc);
-    if (!newSrc)
-      newSrc = oldSrc;
-
+    builder.setInsertionPoint(op);
+    auto v = op->getResult(0);
+    SmallVector<int64_t> shape = getShape(v.getType());
+    int sliceSize = shape[dim] / numOfPartitions;
+    shape[dim] = sliceSize;
     Type newType;
-    if (auto transOp = dyn_cast<TransOp>(op)) {
-      auto srcTy = dyn_cast<RankedTensorType>(newSrc.getType());
-      if (!srcTy)
-        llvm_unreachable("tt.trans expects RankedTensorType src");
-      auto order = transOp.getOrder();
-      SmallVector<int64_t> newShape =
-          applyPermutation(srcTy.getShape(), order.asArrayRef());
-
-      Attribute srcEnc = srcTy.getEncoding();
-      Attribute dstEnc;
-      if (srcEnc) {
-        auto *iface =
-            cast<triton::DialectInferLayoutInterface>(&srcEnc.getDialect());
-        if (failed(iface->inferTransOpEncoding(srcEnc, srcTy.getShape(),
-                                               order.asArrayRef(), dstEnc,
-                                               op->getLoc()))) {
-          op->emitError("failed to infer trans encoding for sliced operand");
-          llvm_unreachable("inferTransOpEncoding failed");
-        }
-      }
-      newType = RankedTensorType::get(newShape, srcTy.getElementType(), dstEnc);
-    } else if (auto transOp = dyn_cast<MemDescTransOp>(op)) {
-      auto srcTy = dyn_cast<MemDescType>(newSrc.getType());
-      if (!srcTy)
-        llvm_unreachable("memdesc.trans expects MemDescType src");
-      auto order = transOp.getOrder();
-      SmallVector<int64_t> newShape =
-          applyPermutation(srcTy.getShape(), order.asArrayRef());
-
-      Attribute srcEnc = srcTy.getEncoding();
-      Attribute dstEnc = srcEnc;
-      if (srcEnc) {
-        auto *iface =
-            cast<triton::DialectInferLayoutInterface>(&srcEnc.getDialect());
-        (void)iface->inferTransOpEncoding(srcEnc, srcTy.getShape(),
-                                          order.asArrayRef(), dstEnc,
-                                          op->getLoc());
-      }
-      newType = MemDescType::get(newShape, srcTy.getElementType(), dstEnc,
-                                 srcTy.getMemorySpace(),
-                                 srcTy.getMutableMemory());
+    if (auto descType = dyn_cast<MemDescType>(v.getType())) {
+      newType = MemDescType::get(
+          shape, descType.getElementType(), descType.getEncoding(),
+          descType.getMemorySpace(), descType.getMutableMemory());
+    } else if (auto tensorType = dyn_cast<RankedTensorType>(v.getType())) {
+      newType = RankedTensorType::get(shape, tensorType.getElementType(),
+                                      tensorType.getEncoding());
     } else {
-      llvm_unreachable("unsupported trans op");
+      llvm_unreachable("unsupported type");
     }
-
     builder.setInsertionPoint(op);
     newOp = builder.clone(*op, mappings);
     setAsyncTaskIds(newOp, sliceTaskIds);
-    auto oldRes = op->getResult(0);
-    auto newRes = newOp->getResult(0);
-    newRes.setType(newType);
-    mappings.map(oldRes, newRes);
-    reverseMappings.map(newRes, oldRes);
+    auto newV = newOp->getResult(0);
+    newV.setType(newType);
+    mappings.map(v, newV);
+    reverseMappings.map(newV, v);
   } else if (isa<nvidia_gpu::WarpGroupDotOp, nvidia_gpu::TCGen5MMAOp>(op)) {
     assert(partitionScheme.dotPartitionOperand.contains(op) &&
            "no operand info");

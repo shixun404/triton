@@ -226,8 +226,13 @@ LogicalResult TransOp::verify() {
   }
   SmallVector<int64_t> retShape = applyPermutation(srcTy.getShape(), order);
   if (retShape != getType().getShape()) {
-    return emitError(
-        "result shape must match the permutation of the source shape");
+    // return emitError(
+    //     "result shape must match the permutation of the source shape");
+      return emitError("result shape must match the permutation of the source shape")
+         << "\n  srcShape=" << srcTy.getShape()
+         << "\n  order=" << order
+         << "\n  expected(retShape)=" << retShape
+         << "\n  got(dstShape)=" << getType().getShape();
   }
   return success();
 }
