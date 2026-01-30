@@ -121,6 +121,7 @@ class Cfg:
     group_m: int
     warps: int
     stages: int
+    num_ctas: int   
     WS: bool = False
 
 
@@ -142,6 +143,7 @@ def run_kernel(A, Bnk, C, cfg: Cfg):
         GROUP_SIZE_M=cfg.group_m,
         num_warps=cfg.warps,     # launch option (ONLY ONCE)
         num_stages=cfg.stages,   # launch option (ONLY ONCE)
+        num_ctas=cfg.num_ctas,,   # launch option (ONLY ONCE)
         WS=cfg.WS,
     )
 
@@ -203,7 +205,7 @@ def main():
         C = torch.empty((M, N), device=device, dtype=dtype)
 
         configs = [
-            Cfg(256, 128, 64, group_m=8, warps=4, stages=4, WS=True),
+            Cfg(256, 128, 64, group_m=8, warps=4, stages=4, num_ctas=2, WS=True),
             # Cfg(128, 256, 64, group_m=8, warps=4, stages=3, WS=False),
             # Cfg(256, 128, 64, group_m=8, warps=8, stages=4),
             # Cfg(128, 128, 64, group_m=8, warps=8, stages=4),
