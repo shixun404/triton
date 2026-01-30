@@ -143,7 +143,7 @@ def run_kernel(A, Bnk, C, cfg: Cfg):
         GROUP_SIZE_M=cfg.group_m,
         num_warps=cfg.warps,     # launch option (ONLY ONCE)
         num_stages=cfg.stages,   # launch option (ONLY ONCE)
-        num_ctas=cfg.num_ctas,,   # launch option (ONLY ONCE)
+        num_ctas=cfg.num_ctas,   # launch option (ONLY ONCE)
         WS=cfg.WS,
     )
 
