@@ -1,0 +1,149 @@
+digraph G {
+  compound = true;
+  subgraph cluster_1 {
+    v2 [label = " ", shape = plain];
+    label = "builtin.module : ()\lttg.num-ctas: 1 : i32\lttg.num-warps: 4 : i32\lttg.target: \"cuda:90\"\lttg.threads-per-warp: 32 : i32\l";
+    subgraph cluster_3 {
+      v4 [label = " ", shape = plain];
+      label = "";
+      subgraph cluster_5 {
+        v6 [label = " ", shape = plain];
+        label = "tt.func : ()\larg_attrs: [\{tt.divisibility = ...\lfunction_type: (!tt.ptr\<bf16\>, !tt....\lnoinline: false\lsym_name: \"matmul_kernel_tma\"\lsym_visibility: \"public\"\l";
+        subgraph cluster_7 {
+          v8 [label = " ", shape = plain];
+          label = "";
+          v9 [label = "<res_arg0> %arg0 !tt.ptr\<bf16\>", shape = Mrecord];
+          v10 [label = "<res_arg1> %arg1 !tt.ptr\<bf16\>", shape = Mrecord];
+          v11 [label = "<res_arg2> %arg2 !tt.ptr\<bf16\>", shape = Mrecord];
+          v12 [label = "<res_arg3> %arg3 i32", shape = Mrecord];
+          v13 [label = "<res_arg4> %arg4 i32", shape = Mrecord];
+          v14 [label = "<res_arg5> %arg5 i32", shape = Mrecord];
+          v15 [label = "<res_arg6> %arg6 i32", shape = Mrecord];
+          v16 [label = "<res_arg7> %arg7 i32", shape = Mrecord];
+          v17 [label = "<res_arg8> %arg8 i32", shape = Mrecord];
+          v18 [fillcolor = "0.000000 0.3 0.95", label = "{arith.constant\l\lasync_task_id: array\<i32: 0, 1, 2\>\lvalue: 1 : i64\l|{<res_c1_i64> %c1_i64 i64}}", shape = Mrecord, style = filled];
+          v19 [fillcolor = "0.000000 0.3 0.95", label = "{arith.constant\l\lasync_task_id: array\<i32: 0, 1, 2\>\lvalue: 8 : i32\l|{<res_c8_i32> %c8_i32 i32}}", shape = Mrecord, style = filled];
+          v20 [fillcolor = "0.000000 0.3 0.95", label = "{arith.constant\l\lasync_task_id: array\<i32: 0, 1, 2\>\lvalue: 256 : i32\l|{<res_c256_i32> %c256_i32 i32}}", shape = Mrecord, style = filled];
+          v21 [fillcolor = "0.000000 0.3 0.95", label = "{arith.constant\l\lasync_task_id: array\<i32: 0, 1, 2\>\lvalue: 128 : i32\l|{<res_c128_i32> %c128_i32 i32}}", shape = Mrecord, style = filled];
+          v22 [fillcolor = "0.000000 0.3 0.95", label = "{arith.constant\l\lasync_task_id: array\<i32: 0, 1, 2\>\lvalue: 64 : i32\l|{<res_c64_i32> %c64_i32 i32}}", shape = Mrecord, style = filled];
+          v23 [fillcolor = "0.000000 0.3 0.95", label = "{arith.constant\l\lasync_task_id: array\<i32: 0, 1, 2\>\lvalue: 0 : i32\l|{<res_c0_i32> %c0_i32 i32}}", shape = Mrecord, style = filled];
+          v24 [fillcolor = "0.000000 0.3 0.95", label = "{arith.constant\l\lasync_task_id: array\<i32: 0, 1, 2\>\lvalue: 1 : i32\l|{<res_c1_i32> %c1_i32 i32}}", shape = Mrecord, style = filled];
+          v25 [fillcolor = "0.000000 0.3 0.95", label = "{arith.constant\l\lasync_task_id: array\<i32: 0, 1, 2\>\lvalue: 127 : i32\l|{<res_c127_i32> %c127_i32 i32}}", shape = Mrecord, style = filled];
+          v26 [fillcolor = "0.000000 0.3 0.95", label = "{arith.constant\l\lasync_task_id: array\<i32: 0, 1, 2\>\lvalue: 63 : i32\l|{<res_c63_i32> %c63_i32 i32}}", shape = Mrecord, style = filled];
+          v27 [fillcolor = "0.000000 0.3 0.95", label = "{arith.constant\l\lasync_task_id: array\<i32: 1, 2\>\lvalue: dense\<0.000000e+00\> : tensor\<256x128xf32, #ttg.nvidia_mma\<\{versionMajor = 3, versionMinor = 0, warpsPerCTA = [4, 1], instrShape = [16, 128, 16]\}\>\>\l|{<res_cst> %cst tensor\<256x128xf32, ...}}", shape = Mrecord, style = filled];
+          v28 [fillcolor = "0.050000 0.3 0.95", label = "{{<arg_arg6> %arg6}|arith.extsi\l\lasync_task_id: array\<i32: 0\>\l|{<res_0> %0 i64}}", shape = Mrecord, style = filled];
+          v29 [fillcolor = "0.100000 0.3 0.95", label = "{{<arg_arg0> %arg0|<arg_arg3> %arg3|<arg_arg5> %arg5|<arg_0> %0|<arg_c1_i64> %c1_i64}|tt.make_tensor_descriptor\l\lasync_task_id: array\<i32: 0\>\lpadding: 1 : i32\l|{<res_1> %1 !tt.tensordesc\<tenso...}}", shape = Mrecord, style = filled];
+          v30 [fillcolor = "0.050000 0.3 0.95", label = "{{<arg_arg7> %arg7}|arith.extsi\l\lasync_task_id: array\<i32: 0\>\l|{<res_2> %2 i64}}", shape = Mrecord, style = filled];
+          v31 [fillcolor = "0.100000 0.3 0.95", label = "{{<arg_arg1> %arg1|<arg_arg4> %arg4|<arg_arg5> %arg5|<arg_2> %2|<arg_c1_i64> %c1_i64}|tt.make_tensor_descriptor\l\lasync_task_id: array\<i32: 0\>\lpadding: 1 : i32\l|{<res_3> %3 !tt.tensordesc\<tenso...}}", shape = Mrecord, style = filled];
+          v32 [fillcolor = "0.050000 0.3 0.95", label = "{{<arg_arg8> %arg8}|arith.extsi\l\lasync_task_id: array\<i32: 1, 2\>\l|{<res_4> %4 i64}}", shape = Mrecord, style = filled];
+          v33 [fillcolor = "0.100000 0.3 0.95", label = "{{<arg_arg2> %arg2|<arg_arg3> %arg3|<arg_arg4> %arg4|<arg_4> %4|<arg_c1_i64> %c1_i64}|tt.make_tensor_descriptor\l\lasync_task_id: array\<i32: 1, 2\>\lpadding: 1 : i32\l|{<res_5> %5 !tt.tensordesc\<tenso...}}", shape = Mrecord, style = filled];
+          v34 [fillcolor = "0.150000 0.3 0.95", label = "{tt.get_program_id\l\lasync_task_id: array\<i32: 0, 1, 2\>\laxis: 0 : i32\l|{<res_6> %6 i32}}", shape = Mrecord, style = filled];
+          v35 [fillcolor = "0.200000 0.3 0.95", label = "{{<arg_arg4> %arg4|<arg_c127_i32> %c127_i32}|arith.addi\l\lasync_task_id: array\<i32: 0, 1, 2\>\loverflowFlags: #arith.overflow\<none...\l|{<res_7> %7 i32}}", shape = Mrecord, style = filled];
+          v36 [fillcolor = "0.250000 0.3 0.95", label = "{{<arg_7> %7|<arg_c128_i32> %c128_i32}|arith.divsi\l\lasync_task_id: array\<i32: 0, 1, 2\>\l|{<res_8> %8 i32}}", shape = Mrecord, style = filled];
+          v37 [fillcolor = "0.300000 0.3 0.95", label = "{{<arg_8> %8|<arg_c8_i32> %c8_i32}|arith.muli\l\lasync_task_id: array\<i32: 0, 1, 2\>\loverflowFlags: #arith.overflow\<none...\l|{<res_9> %9 i32}}", shape = Mrecord, style = filled];
+          v38 [fillcolor = "0.250000 0.3 0.95", label = "{{<arg_6> %6|<arg_9> %9}|arith.divsi\l\lasync_task_id: array\<i32: 0, 1, 2\>\l|{<res_10> %10 i32}}", shape = Mrecord, style = filled];
+          v39 [fillcolor = "0.300000 0.3 0.95", label = "{{<arg_10> %10|<arg_c8_i32> %c8_i32}|arith.muli\l\lasync_task_id: array\<i32: 0, 1, 2\>\loverflowFlags: #arith.overflow\<none...\l|{<res_11> %11 i32}}", shape = Mrecord, style = filled];
+          v40 [fillcolor = "0.350000 0.3 0.95", label = "{{<arg_6> %6|<arg_c8_i32> %c8_i32}|arith.remsi\l\lasync_task_id: array\<i32: 0, 1, 2\>\l|{<res_12> %12 i32}}", shape = Mrecord, style = filled];
+          v41 [fillcolor = "0.200000 0.3 0.95", label = "{{<arg_11> %11|<arg_12> %12}|arith.addi\l\lasync_task_id: array\<i32: 0, 1, 2\>\loverflowFlags: #arith.overflow\<none...\l|{<res_13> %13 i32}}", shape = Mrecord, style = filled];
+          v42 [fillcolor = "0.350000 0.3 0.95", label = "{{<arg_6> %6|<arg_9> %9}|arith.remsi\l\lasync_task_id: array\<i32: 0, 1, 2\>\l|{<res_14> %14 i32}}", shape = Mrecord, style = filled];
+          v43 [fillcolor = "0.250000 0.3 0.95", label = "{{<arg_14> %14|<arg_c8_i32> %c8_i32}|arith.divsi\l\lasync_task_id: array\<i32: 0, 1, 2\>\l|{<res_15> %15 i32}}", shape = Mrecord, style = filled];
+          v44 [fillcolor = "0.200000 0.3 0.95", label = "{{<arg_arg5> %arg5|<arg_c63_i32> %c63_i32}|arith.addi\l\lasync_task_id: array\<i32: 0, 1, 2\>\loverflowFlags: #arith.overflow\<none...\l|{<res_16> %16 i32}}", shape = Mrecord, style = filled];
+          v45 [fillcolor = "0.250000 0.3 0.95", label = "{{<arg_16> %16|<arg_c64_i32> %c64_i32}|arith.divsi\l\lasync_task_id: array\<i32: 0, 1, 2\>\l|{<res_17> %17 i32}}", shape = Mrecord, style = filled];
+          v46 [fillcolor = "0.300000 0.3 0.95", label = "{{<arg_13> %13|<arg_c256_i32> %c256_i32}|arith.muli\l\lasync_task_id: array\<i32: 0, 1, 2\>\loverflowFlags: #arith.overflow\<none...\l|{<res_18> %18 i32}}", shape = Mrecord, style = filled];
+          v47 [fillcolor = "0.300000 0.3 0.95", label = "{{<arg_15> %15|<arg_c128_i32> %c128_i32}|arith.muli\l\lasync_task_id: array\<i32: 0, 1, 2\>\loverflowFlags: #arith.overflow\<none...\l|{<res_19> %19 i32}}", shape = Mrecord, style = filled];
+          subgraph cluster_48 {
+            v49 [label = " ", shape = plain];
+            label = "scf.for : (tensor<256x128xf32, ...)\lasync_task_id: array\<i32: 0, 1, 2\>\ltt.warp_specialize: unit\l";
+            subgraph cluster_50 {
+              v51 [label = " ", shape = plain];
+              label = "";
+              v52 [label = "<res_arg9> %arg9 i32", shape = Mrecord];
+              v53 [label = "<res_arg10> %arg10 tensor\<256x128xf32, ...", shape = Mrecord];
+              v54 [fillcolor = "0.300000 0.3 0.95", label = "{{<arg_arg9> %arg9|<arg_c64_i32> %c64_i32}|arith.muli\l\lasync_task_id: array\<i32: 0\>\loverflowFlags: #arith.overflow\<none...\l|{<res_23> %23 i32}}", shape = Mrecord, style = filled];
+              v55 [fillcolor = "0.400000 0.3 0.95", label = "{{<arg_1> %1|<arg_18> %18|<arg_23> %23}|tt.descriptor_load\l\lasync_task_id: array\<i32: 0\>\lcache: 1 : i32\levict: 1 : i32\l|{<res_24> %24 tensor\<256x64xbf16, ...}}", shape = Mrecord, style = filled];
+              v56 [fillcolor = "0.450000 0.3 0.95", label = "{{<arg_24> %24}|ttg.local_alloc\l\lasync_task_id: array\<i32: 1, 2\>\l|{<res_25> %25 !ttg.memdesc\<256x64x...}}", shape = Mrecord, style = filled];
+              v57 [fillcolor = "0.400000 0.3 0.95", label = "{{<arg_3> %3|<arg_19> %19|<arg_23> %23}|tt.descriptor_load\l\lasync_task_id: array\<i32: 0\>\lcache: 1 : i32\levict: 1 : i32\l|{<res_26> %26 tensor\<128x64xbf16, ...}}", shape = Mrecord, style = filled];
+              v58 [fillcolor = "0.450000 0.3 0.95", label = "{{<arg_26> %26}|ttg.local_alloc\l\lasync_task_id: array\<i32: 1, 2\>\l|{<res_27> %27 !ttg.memdesc\<128x64x...}}", shape = Mrecord, style = filled];
+              v59 [fillcolor = "0.500000 0.3 0.95", label = "{{<arg_27> %27}|ttg.memdesc_trans\l\lasync_task_id: array\<i32: 1, 2\>\lorder: array\<i32: 1, 0\>\l|{<res_28> %28 !ttg.memdesc\<64x128x...}}", shape = Mrecord, style = filled];
+              v60 [fillcolor = "0.550000 0.3 0.95", label = "{{<arg_25> %25|<arg_28> %28|<arg_arg10> %arg10}|ttng.warp_group_dot\l\lasync_task_id: array\<i32: 1, 2\>\linputPrecision: 0 : i32\lisAsync: false\lmaxNumImpreciseAcc: 0 : i32\l|{<res_29> %29 tensor\<256x128xf32, ...}}", shape = Mrecord, style = filled];
+              v61 [fillcolor = "0.600000 0.3 0.95", label = "{{<arg_29> %29}|scf.yield\l\lasync_task_id: array\<i32: 1, 2\>\l}", shape = Mrecord, style = filled];
+            }
+          }
+          v62 [fillcolor = "0.700000 0.3 0.95", label = "{{<arg_20> %20}|arith.truncf\l\lasync_task_id: array\<i32: 1, 2\>\l|{<res_21> %21 tensor\<256x128xbf16,...}}", shape = Mrecord, style = filled];
+          v63 [fillcolor = "0.750000 0.3 0.95", label = "{{<arg_21> %21}|ttg.convert_layout\l\lasync_task_id: array\<i32: 1, 2\>\l|{<res_22> %22 tensor\<256x128xbf16,...}}", shape = Mrecord, style = filled];
+          v64 [fillcolor = "0.800000 0.3 0.95", label = "{{<arg_5> %5|<arg_22> %22|<arg_18> %18|<arg_19> %19}|tt.descriptor_store\l\lasync_task_id: array\<i32: 1, 2\>\l}", shape = Mrecord, style = filled];
+          v65 [fillcolor = "0.850000 0.3 0.95", label = "{tt.return\l}", shape = Mrecord, style = filled];
+        }
+      }
+    }
+  }
+  v15:res_arg6:s -> v28:arg_arg6:n[style = solid];
+  v9:res_arg0:s -> v29:arg_arg0:n[style = solid];
+  v12:res_arg3:s -> v29:arg_arg3:n[style = solid];
+  v14:res_arg5:s -> v29:arg_arg5:n[style = solid];
+  v28:res_0:s -> v29:arg_0:n[style = solid];
+  v18:res_c1_i64:s -> v29:arg_c1_i64:n[style = solid];
+  v16:res_arg7:s -> v30:arg_arg7:n[style = solid];
+  v10:res_arg1:s -> v31:arg_arg1:n[style = solid];
+  v13:res_arg4:s -> v31:arg_arg4:n[style = solid];
+  v14:res_arg5:s -> v31:arg_arg5:n[style = solid];
+  v30:res_2:s -> v31:arg_2:n[style = solid];
+  v18:res_c1_i64:s -> v31:arg_c1_i64:n[style = solid];
+  v17:res_arg8:s -> v32:arg_arg8:n[style = solid];
+  v11:res_arg2:s -> v33:arg_arg2:n[style = solid];
+  v12:res_arg3:s -> v33:arg_arg3:n[style = solid];
+  v13:res_arg4:s -> v33:arg_arg4:n[style = solid];
+  v32:res_4:s -> v33:arg_4:n[style = solid];
+  v18:res_c1_i64:s -> v33:arg_c1_i64:n[style = solid];
+  v13:res_arg4:s -> v35:arg_arg4:n[style = solid];
+  v25:res_c127_i32:s -> v35:arg_c127_i32:n[style = solid];
+  v35:res_7:s -> v36:arg_7:n[style = solid];
+  v21:res_c128_i32:s -> v36:arg_c128_i32:n[style = solid];
+  v36:res_8:s -> v37:arg_8:n[style = solid];
+  v19:res_c8_i32:s -> v37:arg_c8_i32:n[style = solid];
+  v34:res_6:s -> v38:arg_6:n[style = solid];
+  v37:res_9:s -> v38:arg_9:n[style = solid];
+  v38:res_10:s -> v39:arg_10:n[style = solid];
+  v19:res_c8_i32:s -> v39:arg_c8_i32:n[style = solid];
+  v34:res_6:s -> v40:arg_6:n[style = solid];
+  v19:res_c8_i32:s -> v40:arg_c8_i32:n[style = solid];
+  v39:res_11:s -> v41:arg_11:n[style = solid];
+  v40:res_12:s -> v41:arg_12:n[style = solid];
+  v34:res_6:s -> v42:arg_6:n[style = solid];
+  v37:res_9:s -> v42:arg_9:n[style = solid];
+  v42:res_14:s -> v43:arg_14:n[style = solid];
+  v19:res_c8_i32:s -> v43:arg_c8_i32:n[style = solid];
+  v14:res_arg5:s -> v44:arg_arg5:n[style = solid];
+  v26:res_c63_i32:s -> v44:arg_c63_i32:n[style = solid];
+  v44:res_16:s -> v45:arg_16:n[style = solid];
+  v22:res_c64_i32:s -> v45:arg_c64_i32:n[style = solid];
+  v41:res_13:s -> v46:arg_13:n[style = solid];
+  v20:res_c256_i32:s -> v46:arg_c256_i32:n[style = solid];
+  v43:res_15:s -> v47:arg_15:n[style = solid];
+  v21:res_c128_i32:s -> v47:arg_c128_i32:n[style = solid];
+  v52:res_arg9:s -> v54:arg_arg9:n[style = solid];
+  v22:res_c64_i32:s -> v54:arg_c64_i32:n[style = solid];
+  v29:res_1:s -> v55:arg_1:n[style = solid];
+  v46:res_18:s -> v55:arg_18:n[style = solid];
+  v54:res_23:s -> v55:arg_23:n[style = solid];
+  v55:res_24:s -> v56:arg_24:n[style = solid];
+  v31:res_3:s -> v57:arg_3:n[style = solid];
+  v47:res_19:s -> v57:arg_19:n[style = solid];
+  v54:res_23:s -> v57:arg_23:n[style = solid];
+  v57:res_26:s -> v58:arg_26:n[style = solid];
+  v58:res_27:s -> v59:arg_27:n[style = solid];
+  v56:res_25:s -> v60:arg_25:n[style = solid];
+  v59:res_28:s -> v60:arg_28:n[style = solid];
+  v53:res_arg10:s -> v60:arg_arg10:n[style = solid];
+  v60:res_29:s -> v61:arg_29:n[style = solid];
+  v23:res_c0_i32:s -> v49[lhead = cluster_48, style = solid];
+  v45:res_17:s -> v49[lhead = cluster_48, style = solid];
+  v24:res_c1_i32:s -> v49[lhead = cluster_48, style = solid];
+  v27:res_cst:s -> v49[lhead = cluster_48, style = solid];
+  v49 -> v62:arg_20:n[ltail = cluster_48, style = solid];
+  v62:res_21:s -> v63:arg_21:n[style = solid];
+  v33:res_5:s -> v64:arg_5:n[style = solid];
+  v63:res_22:s -> v64:arg_22:n[style = solid];
+  v46:res_18:s -> v64:arg_18:n[style = solid];
+  v47:res_19:s -> v64:arg_19:n[style = solid];
+}

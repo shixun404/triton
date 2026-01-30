@@ -48,11 +48,16 @@ def main() -> int:
         print("[INFO] No .mlir files found in current directory.")
         return 0
     cwd = os.getcwd()
+    os.makedirs(os.path.join(cwd, "dot"), exist_ok=True)
+    os.makedirs(os.path.join(cwd, "png"), exist_ok=True)
     for mlir in mlir_files:
         base = mlir.with_suffix("")  # remove .mlir
-        dot_path = os.path.join(cwd, "dot", base.with_suffix(".dot"))
-        png_path =  os.path.join(cwd, "png", base.with_suffix(".png"))
+        base_name = base.name
+        dot_path = os.path.join(cwd, "dot", base_name + ".dot")
+        png_path = os.path.join(cwd, "png", base_name + ".png")
 
+        print(dot_path, png_path)
+        # assert 0
         print(f"[*] {mlir.name} -> {dot_path}, {png_path}")
 
         # 1) Generate .dot from triton-opt stderr
@@ -70,8 +75,8 @@ def main() -> int:
                   file=sys.stderr)
             return proc.returncode
 
-        dot_path.write_text(proc.stderr, encoding="utf-8")
-
+        with open(dot_path, "w", encoding="utf-8") as f:
+            f.write(proc.stderr)
         # 2) Render .png using graphviz
         run([DOT_BIN, "-Tpng", str(dot_path), "-o", str(png_path)])
 
