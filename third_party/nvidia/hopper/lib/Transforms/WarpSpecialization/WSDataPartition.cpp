@@ -801,7 +801,7 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
             if (auto op0Ty =
                     dyn_cast<RankedTensorType>(newOp->getOperand(0).getType())) {
               auto fixedTy = RankedTensorType::get(
-                  op0Ty.getShape(), resTy.getElementType(), resTy.getEncoding());
+                  op0Ty.getShape(), resTy.getElementType(), op0Ty.getEncoding());
               newV.setType(fixedTy);
               mappings.map(v, newV);
               reverseMappings.map(newV, v);
