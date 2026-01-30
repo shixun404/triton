@@ -159,9 +159,18 @@ Value getBarrierForPipelineStage(OpBuilderWithAsyncTaskIds &builder,
   auto context = barrierAlloc.getContext();
   Attribute sharedMemorySpace =
       triton::gpu::SharedMemorySpaceAttr::get(context);
+  // `barrierAlloc` is a multi-buffered barrier allocation. Indexing it by the
+  // pipeline stage should return a descriptor for *all CTAs* (i.e. N=i64 where
+  // N == numCTAs). The previous implementation hard-coded N=1, which breaks
+  // multi-CTA (num_ctas>1) verification because the encoding still carries the
+  // module's CGA layout.
+  auto allocTy = cast<ttg::MemDescType>(barrierAlloc.getType());
+  ArrayRef<int64_t> allocShape = allocTy.getShape();
+  assert(allocShape.size() >= 2 &&
+         "expected barrierAlloc to have shape [distance, numCTAs]");
+  SmallVector<int64_t> barrierShape(allocShape.begin() + 1, allocShape.end());
   ttg::MemDescType barrierTy = ttg::MemDescType::get(
-      {1}, builder.getI64Type(),
-      cast<ttg::MemDescType>(barrierAlloc.getType()).getEncoding(),
+      barrierShape, builder.getI64Type(), allocTy.getEncoding(),
       sharedMemorySpace,
       /*mutableMemory=*/true);
 

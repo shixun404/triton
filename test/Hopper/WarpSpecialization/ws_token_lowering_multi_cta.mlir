@@ -18,15 +18,14 @@ module attributes {"ttg.num-ctas" = 2 : i32, "ttg.num-warps" = 4 : i32, ttg.targ
     %false = arith.constant false
 
     // Use the token via explicit capture in a partition region, mimicking warp_specialize=true.
-    ttg.warp_specialize(%tok) attributes {warpGroupStartIds = array<i32: 4>} {
-      default {
-        ttg.warp_yield
-      }
-      partition0(%t : tensor<2x!nvws.token>) num_warps(4) {
-        nvws.producer_acquire %t, %c0, %false {async_task_id = array<i32: 0>} : tensor<2x!nvws.token>, i32, i1
-        nvws.producer_commit %t, %c0 {async_task_id = array<i32: 0>} : tensor<2x!nvws.token>, i32
-        ttg.warp_return
-      }
+    ttg.warp_specialize(%tok) attributes {warpGroupStartIds = array<i32: 4>}
+    default {
+      ttg.warp_yield
+    }
+    partition0(%t : tensor<2x!nvws.token>) num_warps(4) {
+      nvws.producer_acquire %t, %c0, %false {async_task_id = array<i32: 0>} : tensor<2x!nvws.token>, i32, i1
+      nvws.producer_commit %t, %c0 {async_task_id = array<i32: 0>} : tensor<2x!nvws.token>, i32
+      ttg.warp_return
     } : (tensor<2x!nvws.token>) -> ()
 
     tt.return

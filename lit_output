@@ -8,9 +8,13 @@ Command Output (stderr):
 RUN: at line 1: /home/tiger/triton/build/cmake.linux-x86_64-cpython-3.11/bin/triton-opt /home/tiger/triton/test/Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir -split-input-file --nvgpu-test-ws-token-lowering=num-consumer-groups=1 | FileCheck /home/tiger/triton/test/Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir
 + /home/tiger/triton/build/cmake.linux-x86_64-cpython-3.11/bin/triton-opt /home/tiger/triton/test/Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir -split-input-file --nvgpu-test-ws-token-lowering=num-consumer-groups=1
 + FileCheck /home/tiger/triton/test/Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir
-/home/tiger/triton/test/Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir:21:78: error: custom op 'ttg.warp_specialize' expected 'default'
-    ttg.warp_specialize(%tok) attributes {warpGroupStartIds = array<i32: 4>} {
-                                                                             ^
+/home/tiger/triton/test/Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir:26:7: error: 'nvws.producer_acquire' op using value defined outside the region
+      nvws.producer_acquire %t, %c0, %false {async_task_id = array<i32: 0>} : tensor<2x!nvws.token>, i32, i1
+      ^
+/home/tiger/triton/test/Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir:26:7: note: see current operation: "nvws.producer_acquire"(%arg0, <<UNKNOWN SSA VALUE>>, <<UNKNOWN SSA VALUE>>) {async_task_id = array<i32: 0>} : (tensor<2x!nvws.token>, i32, i1) -> ()
+/home/tiger/triton/test/Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir:25:5: note: required by region isolation constraints
+    partition0(%t : tensor<2x!nvws.token>) num_warps(4) {
+    ^
 FileCheck error: '<stdin>' is empty.
 FileCheck command line:  FileCheck /home/tiger/triton/test/Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir
 
