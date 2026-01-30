@@ -1019,32 +1019,68 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
     newOp = cloneAndSetResultType(op);
   } else if (auto tensorDescOp = dyn_cast<ttng::ReinterpretTensorDescOp>(op)) {
     newOp = cloneAndSetResultType(op);
-  } else if (isa<TransOp, MemDescTransOp>(op)) {
-    sliceOp(op->getOperand(0), offset, mappings, reverseMappings,
-            partitionScheme);
-    builder.setInsertionPoint(op);
-    auto v = op->getResult(0);
-    SmallVector<int64_t> shape = getShape(v.getType());
-    int sliceSize = shape[dim] / numOfPartitions;
-    shape[dim] = sliceSize;
-    Type newType;
-    if (auto descType = dyn_cast<MemDescType>(v.getType())) {
-      newType = MemDescType::get(
-          shape, descType.getElementType(), descType.getEncoding(),
-          descType.getMemorySpace(), descType.getMutableMemory());
-    } else if (auto tensorType = dyn_cast<RankedTensorType>(v.getType())) {
-      newType = RankedTensorType::get(shape, tensorType.getElementType(),
-                                      tensorType.getEncoding());
-    } else {
-      llvm_unreachable("unsupported type");
+ } else if (auto transOp = dyn_cast<TransOp>(op)) {
+  // 1) slice operand first
+  sliceOp(transOp.getOperand(0), offset, mappings, reverseMappings,
+          partitionScheme);
+  Value newSrc = mappings.lookupOrNull(transOp.getOperand(0));
+  assert(newSrc && "trans operand not sliced");
+
+  // 2) build result type from sliced operand shape + permutation
+  auto srcTy = dyn_cast<RankedTensorType>(newSrc.getType());
+  if (!srcTy)
+    llvm_unreachable("tt.trans expects RankedTensorType operand");
+
+  auto oldOutTy = dyn_cast<RankedTensorType>(transOp.getResult().getType());
+  if (!oldOutTy)
+    llvm_unreachable("tt.trans expects RankedTensorType result");
+
+  // transOp.getOrder() 的具体 API 你按实际改：
+  // - 可能是 DenseI32ArrayAttr
+  // - 或者 ArrayAttr<IntegerAttr>
+  SmallVector<unsigned> order;
+  {
+    auto orderAttr = transOp.getOrder(); // 伪代码：按你们 op 定义取
+    // TODO: parse orderAttr into `order`
+  }
+
+  SmallVector<int64_t> srcShape(srcTy.getShape().begin(), srcTy.getShape().end());
+  SmallVector<int64_t> newOutShape;
+  newOutShape.reserve(order.size());
+  for (unsigned i = 0; i < order.size(); ++i)
+    newOutShape.push_back(srcShape[order[i]]);
+
+  // 3) infer encoding for trans (recommended)
+  Attribute dstEnc = oldOutTy.getEncoding();
+  if (auto srcEnc = srcTy.getEncoding()) {
+    // 注意：你 reshape 那段是从 dialect 拿 infer 接口
+    // trans 也应该类似；函数名可能叫 inferTransOpEncoding / inferPermuteOpEncoding
+    auto *iface =
+        cast<triton::DialectInferLayoutInterface>(&srcEnc.getDialect());
+
+    // 伪代码：按你们接口签名改
+    if (failed(iface->inferTransOpEncoding(srcShape, srcEnc, order,
+                                          newOutShape, dstEnc,
+                                          op->getLoc()))) {
+      op->emitError("failed to infer trans encoding for sliced operand");
+      llvm_unreachable("inferTransOpEncoding failed");
     }
-    builder.setInsertionPoint(op);
-    newOp = builder.clone(*op, mappings);
-    setAsyncTaskIds(newOp, sliceTaskIds);
-    auto newV = newOp->getResult(0);
-    newV.setType(newType);
-    mappings.map(v, newV);
-    reverseMappings.map(newV, v);
+  }
+
+  auto newOutTy = RankedTensorType::get(newOutShape, oldOutTy.getElementType(),
+                                       dstEnc);
+
+  // 4) clone + set type + map values
+  builder.setInsertionPoint(op);
+  newOp = builder.clone(*op, mappings);
+  setAsyncTaskIds(newOp, sliceTaskIds);
+
+  Value oldRes = op->getResult(0);
+  Value newRes = newOp->getResult(0);
+  newRes.setType(newOutTy);
+
+  mappings.map(oldRes, newRes);
+  reverseMappings.map(newRes, oldRes);
   } else if (isa<nvidia_gpu::WarpGroupDotOp, nvidia_gpu::TCGen5MMAOp>(op)) {
     assert(partitionScheme.dotPartitionOperand.contains(op) &&
            "no operand info");
