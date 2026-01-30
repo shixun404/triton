@@ -791,6 +791,23 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
       }
 
       if (needRetype) {
+        // convert_layout changes encoding/layout but must preserve the tensor
+        // shape exactly. After slicing the operand, fix the result shape to
+        // match the sliced operand shape (keep result element type/encoding).
+        if (isa<ConvertLayoutOp>(op) && newOp->getNumOperands() >= 1) {
+          if (auto resTy = dyn_cast<RankedTensorType>(newV.getType())) {
+            if (auto op0Ty =
+                    dyn_cast<RankedTensorType>(newOp->getOperand(0).getType())) {
+              auto fixedTy = RankedTensorType::get(
+                  op0Ty.getShape(), resTy.getElementType(), resTy.getEncoding());
+              newV.setType(fixedTy);
+              mappings.map(v, newV);
+              reverseMappings.map(newV, v);
+              return newOp;
+            }
+          }
+        }
+
         // For arith elementwise ops (e.g. arith.truncf), the verifier requires
         // that input and output have the same tensor *shape*. Our partitioning
         // scheme may have a dim mismatch across view-like ops (reshape/trans),
