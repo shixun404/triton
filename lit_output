@@ -1,0 +1,28 @@
+-- Testing: 1 tests, 1 workers --
+FAIL: TRITON :: Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir (1 of 1)
+******************** TEST 'TRITON :: Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir' FAILED ********************
+Exit Code: 2
+
+Command Output (stderr):
+--
+RUN: at line 1: /home/tiger/triton/build/cmake.linux-x86_64-cpython-3.11/bin/triton-opt /home/tiger/triton/test/Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir -split-input-file --nvgpu-test-ws-token-lowering=num-consumer-groups=1 | FileCheck /home/tiger/triton/test/Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir
++ /home/tiger/triton/build/cmake.linux-x86_64-cpython-3.11/bin/triton-opt /home/tiger/triton/test/Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir -split-input-file --nvgpu-test-ws-token-lowering=num-consumer-groups=1
++ FileCheck /home/tiger/triton/test/Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir
+/home/tiger/triton/test/Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir:21:78: error: custom op 'ttg.warp_specialize' expected 'default'
+    ttg.warp_specialize(%tok) attributes {warpGroupStartIds = array<i32: 4>} {
+                                                                             ^
+FileCheck error: '<stdin>' is empty.
+FileCheck command line:  FileCheck /home/tiger/triton/test/Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir
+
+--
+
+********************
+********************
+Failed Tests (1):
+  TRITON :: Hopper/WarpSpecialization/ws_token_lowering_multi_cta.mlir
+
+
+Testing Time: 0.03s
+
+Total Discovered Tests: 1
+  Failed: 1 (100.00%)
