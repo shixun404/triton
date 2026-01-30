@@ -791,6 +791,24 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
       }
 
       if (needRetype) {
+        // For arith elementwise ops (e.g. arith.truncf), the verifier requires
+        // that input and output have the same tensor *shape*. Our partitioning
+        // scheme may have a dim mismatch across view-like ops (reshape/trans),
+        // so prefer deriving the result shape from the (already sliced) operand.
+        if (op->getDialect() && op->getDialect()->getNamespace() == "arith" &&
+            newOp->getNumOperands() >= 1) {
+          if (auto resTy = dyn_cast<RankedTensorType>(newV.getType())) {
+            if (auto op0Ty =
+                    dyn_cast<RankedTensorType>(newOp->getOperand(0).getType())) {
+              auto fixedTy = RankedTensorType::get(
+                  op0Ty.getShape(), resTy.getElementType(), resTy.getEncoding());
+              newV.setType(fixedTy);
+              mappings.map(v, newV);
+              reverseMappings.map(newV, v);
+              return newOp;
+            }
+          }
+        }
         if (auto type = dyn_cast<MemDescType>(v.getType())) {
           SmallVector<int64_t> shape{type.getShape().begin(),
                                      type.getShape().end()};
