@@ -315,10 +315,10 @@ class CUDABackend(BaseBackend):
         passes.common.add_sccp(pm)
         passes.common.add_cse(pm)
         passes.common.add_canonicalizer(pm)
-        import inspect
-        f = inspect.currentframe()
-        print(f"[HERE] {f.f_code.co_filename}:{f.f_lineno} in {f.f_code.co_name}")            
-        assert 0
+        # import inspect
+        # f = inspect.currentframe()
+        # print(f"[HERE] {f.f_code.co_filename}:{f.f_lineno} in {f.f_code.co_name}")            
+        # assert 0
         pm.run(mod, 'make_ttgir')
         metadata["tensordesc_meta"] = mod.get_tensordesc_metadata()
         return mod
