@@ -184,11 +184,14 @@ def bench(A, Bkn, C, cfg: Cfg, iters: int, warmup: int):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--iters", type=int, default=5)
-    ap.add_argument("--warmup", type=int, default=3)
+    ap.add_argument("--iters", type=int, default=3)
+    ap.add_argument("--warmup", type=int, default=1)
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--save", action="store_true")
     args = ap.parse_args()
+
+    iter_list = [100, 100, 10, 5, args.iters]
+    multiplier_list = [1, 2, 4, 8, 16]
 
     torch.manual_seed(0)
     torch.cuda.manual_seed_all(0)
@@ -200,8 +203,8 @@ def main():
     triton.set_allocator(alloc_fn)
 
 
-    # m, k, n = 2048, 2048, 256
-    m, k, n = 2048, 256, 2048
+    m, k, n = 2048, 2048, 256
+    # m, k, n = 2048, 256, 2048
 
     dtype = torch.bfloat16
     device = "cuda"
@@ -229,9 +232,16 @@ def main():
                                 )
     # configs = [Cfg(256, 256, 64, group_m=8, warps=8, stages=4, num_ctas=2, WS=False)]
     # configs = [Cfg(128, 256, 64, group_m=8, warps=4, stages=3, num_ctas=1, WS=True)]
-    configs = [Cfg(128, 256, 64, group_m=8, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=True)]
-    iter_list = [100, 100, 10, 5, 5]
-    multiplier_list = [1, 2, 4, 8, 16]
+    # configs = [Cfg(128, 256, 64, group_m=8, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=True)]
+    configs = [
+
+        Cfg(128, 256, 64, group_m=8, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=False),
+        Cfg(128, 256, 64, group_m=8, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=True),
+        Cfg(256, 256, 64, group_m=8, warps=8, stages=3, num_ctas=2, WS=False, FLATTEN=True),
+        # Cfg(128, 256, 64, group_m=8, warps=4, stages=3, num_ctas=1, WS=True, FLATTEN=True),
+        # Cfg(128, 256, 64, group_m=8, warps=8, stages=4, num_ctas=1, WS=False, FLATTEN=True),
+               ]
+
     # for id in range(len(iter_list)): 
     for id in [4]: 
         i = multiplier_list[id]

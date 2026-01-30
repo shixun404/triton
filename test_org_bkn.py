@@ -19,6 +19,7 @@ def matmul_kernel_tma(
     BLOCK_SIZE_K: tl.constexpr,
     GROUP_SIZE_M: tl.constexpr,
     WS: tl.constexpr,
+    num_stages: tl.constexpr,
 ):
     # Descriptors
     a_desc = tl.make_tensor_descriptor(
@@ -64,7 +65,7 @@ def matmul_kernel_tma(
     acc = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
 
     # Your requested warp_specialize=True
-    for kt in tl.range(0, k_tiles, warp_specialize=WS):
+    for kt in tl.range(0, k_tiles, warp_specialize=WS, num_stages=num_stages):
         offs_k = kt * BLOCK_SIZE_K
         a = a_desc.load([offs_am, offs_k])   # [BM, BK]
         b = b_desc.load([offs_k, offs_bn])   # [BN, BK]
@@ -175,7 +176,7 @@ def bench(A, Bkn, C, cfg: Cfg, iters: int, warmup: int):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--iters", type=int, default=5)
+    ap.add_argument("--iters", type=int, default=10)
     ap.add_argument("--warmup", type=int, default=3)
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--save", action="store_true")
@@ -191,8 +192,8 @@ def main():
     triton.set_allocator(alloc_fn)
 
 
-    # m, k, n = 2048, 2048, 256
-    m, k, n = 2048, 256, 2048
+    m, k, n = 2048, 2048, 256
+    # m, k, n = 2048, 256, 2048
 
     dtype = torch.bfloat16
     device = "cuda"
@@ -219,11 +220,13 @@ def main():
                             )
     
     configs = [
-        Cfg(256, 128, 64, group_m=8, warps=8, stages=4, num_ctas=1, WS=False),
-        # Cfg(256, 128, 64, group_m=8, warps=8, stages=3, num_ctas=1, WS=False),
+
+        Cfg(128, 256, 64, group_m=8, warps=8, stages=3, num_ctas=1, WS=False),
+        Cfg(128, 256, 64, group_m=8, warps=4, stages=3, num_ctas=1, WS=True),
+        Cfg(128, 256, 64, group_m=8, warps=8, stages=4, num_ctas=1, WS=False),
                ]
 
-    iter_list = [100, 100, 10, 5, 5]
+    iter_list = [100, 100, 10, 5, args.iters]
     multiplier_list = [1, 2, 4, 8, 16]
     # for id in range(len(iter_list)): 
     for id in [4]: 
