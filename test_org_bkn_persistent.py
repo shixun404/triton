@@ -6,129 +6,130 @@ import torch
 import triton
 import triton.language as tl
 
-
-@triton.jit
-def matmul_kernel_tma(
-    a_ptr, b_ptr, c_ptr,
-    M, N, K,
-    stride_am, stride_ak,   # A: [M, K]
-    stride_bn, stride_bk,   # B: [N, K]
-    stride_cm, stride_cn,   # C: [M, N]
-    BLOCK_SIZE_M: tl.constexpr,
-    BLOCK_SIZE_N: tl.constexpr,
-    BLOCK_SIZE_K: tl.constexpr,
-    GROUP_SIZE_M: tl.constexpr,
-    num_stages: tl.constexpr,
-    WS: tl.constexpr,
-    FLATTEN: tl.constexpr,
-    SUBTILE: tl.constexpr,
-):
-    # Descriptors
-    a_desc = tl.make_tensor_descriptor(
-        a_ptr,
-        shape=[M, K],
-        strides=[stride_am, stride_ak],
-        block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_K],
-    )
-    b_desc = tl.make_tensor_descriptor(
-        b_ptr,
-        shape=[K, N],
-        strides=[stride_bk, stride_bn],
-        block_shape=[BLOCK_SIZE_K, BLOCK_SIZE_N],
-    )
-    c_desc = tl.make_tensor_descriptor(
-        c_ptr,
-        shape=[M, N],
-        strides=[stride_cm, stride_cn],
-        block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_N // 2 if SUBTILE else BLOCK_SIZE_N],
-    )
-
-
-    start_pid = tl.program_id(axis=0)
-    num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
-    num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
-    num_tiles = num_pid_m * num_pid_n
-
-    num_pid_in_group = GROUP_SIZE_M * num_pid_n
-    
-    for pid in tl.range(start_pid, num_tiles, 132, num_stages=num_stages, warp_specialize=WS, flatten=FLATTEN):
-        group_id = pid // num_pid_in_group
-        first_pid_m = group_id * GROUP_SIZE_M
-
-        pid_m = first_pid_m + (pid % GROUP_SIZE_M)
-        pid_n = (pid % num_pid_in_group) // GROUP_SIZE_M
-
-        # # guard (in case grid is oversized)
-        # if pid_m >= num_pid_m:
-        #     return
-
-        k_tiles = tl.cdiv(K, BLOCK_SIZE_K)
-
-        offs_am = pid_m * BLOCK_SIZE_M
-        offs_bn = pid_n * BLOCK_SIZE_N
-
-        acc = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
-
-        # Your requested warp_specialize=True
-        for kt in tl.range(k_tiles):
-            offs_k = kt * BLOCK_SIZE_K
-            a = a_desc.load([offs_am, offs_k])   # [BM, BK]
-            b = b_desc.load([offs_k, offs_bn])   # [BN, BK]
-            acc = tl.dot(a, b, acc)            # [BM,BK] x [BK,BN] -> [BM,BN]
-
-        if SUBTILE:
-            acc = tl.reshape(acc, (BLOCK_SIZE_M, 2, BLOCK_SIZE_N // 2))
-            acc = tl.permute(acc, (0, 2, 1))
-            acc0, acc1 = tl.split(acc)
-            c0 = acc0.to(tl.bfloat16)
-            c_desc.store([offs_am, offs_bn], c0)
-            c1 = acc1.to(tl.bfloat16)
-            c_desc.store([offs_am, offs_bn + BLOCK_SIZE_N // 2], c1)
-        else:
-            c = acc.to(tl.bfloat16)
-            c_desc.store([offs_am, offs_bn], c)
+def make_matmul_kernel(TAG: str):
+    @triton.jit(repr=lambda _: f"matmul_kernel_tma__{TAG}")
+    def matmul_kernel_tma(
+        a_ptr, b_ptr, c_ptr,
+        M, N, K,
+        stride_am, stride_ak,   # A: [M, K]
+        stride_bn, stride_bk,   # B: [N, K]
+        stride_cm, stride_cn,   # C: [M, N]
+        BLOCK_SIZE_M: tl.constexpr,
+        BLOCK_SIZE_N: tl.constexpr,
+        BLOCK_SIZE_K: tl.constexpr,
+        GROUP_SIZE_M: tl.constexpr,
+        num_stages: tl.constexpr,
+        WS: tl.constexpr,
+        FLATTEN: tl.constexpr,
+        SUBTILE: tl.constexpr,
+    ):
+        # Descriptors
+        a_desc = tl.make_tensor_descriptor(
+            a_ptr,
+            shape=[M, K],
+            strides=[stride_am, stride_ak],
+            block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_K],
+        )
+        b_desc = tl.make_tensor_descriptor(
+            b_ptr,
+            shape=[K, N],
+            strides=[stride_bk, stride_bn],
+            block_shape=[BLOCK_SIZE_K, BLOCK_SIZE_N],
+        )
+        c_desc = tl.make_tensor_descriptor(
+            c_ptr,
+            shape=[M, N],
+            strides=[stride_cm, stride_cn],
+            block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_N // 2 if SUBTILE else BLOCK_SIZE_N],
+        )
 
 
-    # c_desc = tl.make_tensor_descriptor(
-    #     c_ptr,
-    #     shape=[M, N],
-    #     strides=[stride_cm, stride_cn],
-    #     block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_N // 4],
-    # )
-    # c_desc = tl.make_tensor_descriptor(
-    #     c_ptr,
-    #     shape=[M, N],
-    #     strides=[stride_cm, stride_cn],
-    #     block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_N // 2],
-    # )
+        start_pid = tl.program_id(axis=0)
+        num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
+        num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
+        num_tiles = num_pid_m * num_pid_n
+
+        num_pid_in_group = GROUP_SIZE_M * num_pid_n
+        
+        for pid in tl.range(start_pid, num_tiles, 132, num_stages=num_stages, warp_specialize=WS, flatten=FLATTEN):
+            group_id = pid // num_pid_in_group
+            first_pid_m = group_id * GROUP_SIZE_M
+
+            pid_m = first_pid_m + (pid % GROUP_SIZE_M)
+            pid_n = (pid % num_pid_in_group) // GROUP_SIZE_M
+
+            # # guard (in case grid is oversized)
+            # if pid_m >= num_pid_m:
+            #     return
+
+            k_tiles = tl.cdiv(K, BLOCK_SIZE_K)
+
+            offs_am = pid_m * BLOCK_SIZE_M
+            offs_bn = pid_n * BLOCK_SIZE_N
+
+            acc = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
+
+            # Your requested warp_specialize=True
+            for kt in tl.range(k_tiles):
+                offs_k = kt * BLOCK_SIZE_K
+                a = a_desc.load([offs_am, offs_k])   # [BM, BK]
+                b = b_desc.load([offs_k, offs_bn])   # [BN, BK]
+                acc = tl.dot(a, b, acc)            # [BM,BK] x [BK,BN] -> [BM,BN]
+
+            if SUBTILE:
+                acc = tl.reshape(acc, (BLOCK_SIZE_M, 2, BLOCK_SIZE_N // 2))
+                acc = tl.permute(acc, (0, 2, 1))
+                acc0, acc1 = tl.split(acc)
+                c0 = acc0.to(tl.bfloat16)
+                c_desc.store([offs_am, offs_bn], c0)
+                c1 = acc1.to(tl.bfloat16)
+                c_desc.store([offs_am, offs_bn + BLOCK_SIZE_N // 2], c1)
+            else:
+                c = acc.to(tl.bfloat16)
+                c_desc.store([offs_am, offs_bn], c)
+    return matmul_kernel_tma
 
 
-    # acc = tl.reshape(acc, (BLOCK_SIZE_M, 2, BLOCK_SIZE_N // 2))
-    # acc = tl.permute(acc, (0, 2, 1))
-    # acc0, acc1 = tl.split(acc)
-    # c0 = acc0.to(tl.bfloat16)
-    # c_desc.store([offs_am, offs_bn], c0)
-    # c1 = acc1.to(tl.bfloat16)
-    # c_desc.store([offs_am, offs_bn + BLOCK_SIZE_N // 2], c1)
-    
-    # acc = tl.reshape(acc, (BLOCK_SIZE_M, 4, BLOCK_SIZE_N // 4))
-    # acc = tl.permute(acc, (0, 2, 1))
-    # acc0, acc1, acc2, acc3 = tl.split(acc)
-    # c0 = acc0.to(tl.bfloat16)
-    # c_desc.store([offs_am, offs_bn], c0)
-    # c1 = acc1.to(tl.bfloat16)
-    # c_desc.store([offs_am, offs_bn + BLOCK_SIZE_N // 4], c1)
-    # c2 = acc2.to(tl.bfloat16)
-    # c_desc.store([offs_am, offs_bn + 2 * (BLOCK_SIZE_N // 4)], c2)
-    # c3 = acc3.to(tl.bfloat16)
-    # c_desc.store([offs_am, offs_bn + 3 * (BLOCK_SIZE_N // 4)], c3)
+        # c_desc = tl.make_tensor_descriptor(
+        #     c_ptr,
+        #     shape=[M, N],
+        #     strides=[stride_cm, stride_cn],
+        #     block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_N // 4],
+        # )
+        # c_desc = tl.make_tensor_descriptor(
+        #     c_ptr,
+        #     shape=[M, N],
+        #     strides=[stride_cm, stride_cn],
+        #     block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_N // 2],
+        # )
 
 
-    # c0 = acc[:, 0:BLOCK_SIZE_N // 2].to(tl.bfloat16)
-    # c_desc.store([offs_am, offs_bn], c0)
+        # acc = tl.reshape(acc, (BLOCK_SIZE_M, 2, BLOCK_SIZE_N // 2))
+        # acc = tl.permute(acc, (0, 2, 1))
+        # acc0, acc1 = tl.split(acc)
+        # c0 = acc0.to(tl.bfloat16)
+        # c_desc.store([offs_am, offs_bn], c0)
+        # c1 = acc1.to(tl.bfloat16)
+        # c_desc.store([offs_am, offs_bn + BLOCK_SIZE_N // 2], c1)
+        
+        # acc = tl.reshape(acc, (BLOCK_SIZE_M, 4, BLOCK_SIZE_N // 4))
+        # acc = tl.permute(acc, (0, 2, 1))
+        # acc0, acc1, acc2, acc3 = tl.split(acc)
+        # c0 = acc0.to(tl.bfloat16)
+        # c_desc.store([offs_am, offs_bn], c0)
+        # c1 = acc1.to(tl.bfloat16)
+        # c_desc.store([offs_am, offs_bn + BLOCK_SIZE_N // 4], c1)
+        # c2 = acc2.to(tl.bfloat16)
+        # c_desc.store([offs_am, offs_bn + 2 * (BLOCK_SIZE_N // 4)], c2)
+        # c3 = acc3.to(tl.bfloat16)
+        # c_desc.store([offs_am, offs_bn + 3 * (BLOCK_SIZE_N // 4)], c3)
 
-    # c1 = acc[:, BLOCK_SIZE_N // 2:BLOCK_SIZE_N].to(tl.bfloat16)
-    # c_desc.store([offs_am, offs_bn + BLOCK_SIZE_N // 2], c1)
+
+        # c0 = acc[:, 0:BLOCK_SIZE_N // 2].to(tl.bfloat16)
+        # c_desc.store([offs_am, offs_bn], c0)
+
+        # c1 = acc[:, BLOCK_SIZE_N // 2:BLOCK_SIZE_N].to(tl.bfloat16)
+        # c_desc.store([offs_am, offs_bn + BLOCK_SIZE_N // 2], c1)
 
 
 @dataclass(frozen=True)
@@ -151,8 +152,8 @@ def run_kernel(A, Bkn, C, cfg: Cfg):
 
     # grid = (triton.cdiv(M, cfg.bm) * triton.cdiv(N, cfg.bn),)
     grid = (132,)
-
-    matmul_kernel_tma[grid](
+    kernel = make_matmul_kernel(f"BM{cfg.bm}_BN{cfg.bn}_BK{cfg.bk}_GM{cfg.group_m}_WARP{cfg.warps}_STG{cfg.stages}_CTA{cfg.num_ctas}_WS{int(cfg.WS)}_FLATTEN{int(cfg.FLATTEN)}_SUB{int(cfg.SUBTILE)}")
+    kernel[grid](
         A, Bkn, C,
         M, N, K,
         A.stride(0), A.stride(1),
@@ -198,6 +199,7 @@ def main():
     ap.add_argument("--iters", type=int, default=3)
     ap.add_argument("--warmup", type=int, default=1)
     ap.add_argument("--group_m", type=int, default=8)
+    ap.add_argument("--interval", type=int, default=10)
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--save", action="store_true")
     args = ap.parse_args()
@@ -264,6 +266,7 @@ def main():
     # configs = [Cfg(128, 256, 64, group_m=8, warps=4, stages=3, num_ctas=1, WS=True)]
     # configs = [Cfg(128, 256, 64, group_m=8, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=True)]
     configs = [
+        
 
         Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=False, SUBTILE=False),
         # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=False, SUBTILE=True),
@@ -281,11 +284,16 @@ def main():
      
         # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=False),
         # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=False, SUBTILE=True),
+        Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=False),
+        Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=False, SUBTILE=True),
+        Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=1, WS=True, FLATTEN=False, SUBTILE=True),
         Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=True),
         Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=True, SUBTILE=True),
      
         # Cfg(128, 256, 64, group_m=8, warps=8, stages=4, num_ctas=1, WS=False, FLATTEN=True),
         ]
+
+    # configs = configs + list(reversed(configs))
 
     # for id in range(len(iter_list)): 
     for id in [4]: 
@@ -327,13 +335,15 @@ def main():
             # bf16：常见经验阈值 abs 1e-1 ~ 1e0，rel 1e-2 ~ 1e-1（看规模/累加长度K）
             assert not bad
 
-        
+        ms, tflops = bench(A, Bkn, C, configs[0], iters=args.iters, warmup=args.warmup)
+        import time
+        time.sleep(args.interval)
+        # ms, tflops = bench(A, Bkn, C, configs[1], iters=args.iters, warmup=args.warmup)
+        # ms, tflops = bench(A, Bkn, C, configs[2], iters=args.iters, warmup=args.warmup)
+        # ms, tflops = bench(A, Bkn, C, configs[3], iters=args.iters, warmup=args.warmup)
 
         # seed += 1
         for cfg in configs:
-            A = torch.randn((M, K), device=device, dtype=dtype) * 0.1
-            Bnk = torch.randn((N, K), device=device, dtype=dtype) * 0.1
-            Bkn = Bnk.T.contiguous() 
             current_cfg = f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},{cfg.num_ctas},{cfg.WS},{cfg.FLATTEN},{args.iters},{args.warmup},"
             try:
                 ms, tflops = bench(A, Bkn, C, cfg, iters=args.iters, warmup=args.warmup)
@@ -360,7 +370,7 @@ def main():
                     f.write(csv_output)
             torch.cuda.synchronize()
             import time
-            time.sleep(20)
+            time.sleep(args.interval)
             torch.cuda.synchronize()
     if args.save:
         csv_output = "\n".join(csv_lines)
