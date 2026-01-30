@@ -149,8 +149,18 @@ void lowerTokenOperations(Operation *parentOp, int numCTAs,
                                   bufferEmptyCount);
     }
 
-    assert(numCTAs == 1 && "remote CTA is not supported yet");
+
+    // Synchronize after initializing barriers.
+    //
+    // - Intra-CTA: make sure all threads see mbarrier.init before any use.
+    // - Inter-CTA (cluster): when numCTAs > 1, other CTAs may observe/use the
+    //   leader barrier via cluster shared addressing, so we need a cluster-level
+    //   sync as well.
     mlir::gpu::BarrierOp::create(builder, loc);
+    if (numCTAs > 1) {
+      ttng::ClusterArriveOp::create(builder, loc, /*relaxed=*/false);
+      ttng::ClusterWaitOp::create(builder, loc);
+    }
 
     // Helper function for extracting one index from bufferFullArray.
     auto extractBufferFull = [&](Location loc, Value idx) -> Value {
@@ -291,7 +301,7 @@ void lowerTokenOperations(Operation *parentOp, int numCTAs,
     op->erase();
   }
 
-  assert(numCTAs == 1 && "remote CTA is not supported yet");
+  // assert(numCTAs == 1 && "remote CTA is not supported yet");
   LLVM_DEBUG({
     LDBG("after lowering");
     parentOp->dump();

@@ -89,4 +89,21 @@ def NVGPUTestWSCodePartition: Pass<"nvgpu-test-ws-code-partition", "mlir::Module
   ];
 }
 
+def NVGPUTestWSTokenLowering : Pass<"nvgpu-test-ws-token-lowering", "mlir::ModuleOp"> {
+  let summary = "test warp specialization token lowering";
+
+  let description = "This pass lowers NVWS token operations into TTNG barrier operations.";
+
+  let dependentDialects = ["mlir::triton::gpu::TritonGPUDialect",
+                           "mlir::triton::nvidia_gpu::TritonNvidiaGPUDialect",
+                           "mlir::triton::nvws::NVWSDialect"];
+
+  let options = [
+    Option<"numConsumerGroups", "num-consumer-groups",
+           "int32_t", /*default*/"1",
+           "number of consumer groups (warp groups - 1) for warp specialization">
+  ];
+}
+
+
 #endif // NV_TRANSFORMS_PASSES
