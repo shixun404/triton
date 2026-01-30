@@ -6,6 +6,8 @@
 #include "triton/Dialect/TritonGPU/IR/Dialect.h"
 #include "triton/Dialect/TritonGPU/Transforms/Utility.h"
 #include "triton/Dialect/TritonNvidiaGPU/IR/Dialect.h"
+#include "llvm/Support/Signals.h"   // llvm::dumpStackTrace
+#include "llvm/Support/raw_ostream.h"
 
 using namespace mlir::triton;
 using namespace mlir::triton::gpu;
@@ -1202,6 +1204,31 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
     newOp->walk(
         [&](Operation *childOp) { setAsyncTaskIds(childOp, sliceTaskIds); });
   } else if (auto reshapeOp = dyn_cast<ReshapeOp>(op)) {
+
+  llvm::errs() << "\n[WSDataPartition] HIT SplitOp (intentional crash for tracing)\n";
+  llvm::errs() << "  loc: " << op->getLoc() << "\n";
+  llvm::errs() << "  dim=" << dim << " offset=" << offset
+               << " numOfPartitions=" << numOfPartitions << "\n";
+  llvm::errs() << "  op: ";
+  op->print(llvm::errs());
+  llvm::errs() << "\n";
+
+  // // 更详细：把整个 function dump 出来
+  // if (auto *parent = op->getParentOp()) {
+  //   if (auto func = parent->getParentOfType<mlir::triton::FuncOp>()) {
+  //     llvm::errs() << "\n--- parent tt.func ---\n";
+  //     func.dump();
+  //     llvm::errs() << "\n----------------------\n";
+  //   }
+  // }
+
+  // 打印 C++ stacktrace（需要符号化环境）
+  llvm::errs() << "\n--- stacktrace ---\n";
+  llvm::sys::PrintStackTrace(llvm::errs());
+  llvm::errs() << "\n------------------\n";
+
+  // 直接终止（用 abort 更明确；也可以用 llvm_unreachable）
+  abort();
   // 1) 先 slice operand
   sliceOp(reshapeOp.getOperand(), offset, mappings, reverseMappings, partitionScheme);
 
