@@ -159,11 +159,22 @@ Value getBarrierForPipelineStage(OpBuilderWithAsyncTaskIds &builder,
   auto context = barrierAlloc.getContext();
   Attribute sharedMemorySpace =
       triton::gpu::SharedMemorySpaceAttr::get(context);
-  ttg::MemDescType barrierTy = ttg::MemDescType::get(
-      {1}, builder.getI64Type(),
-      cast<ttg::MemDescType>(barrierAlloc.getType()).getEncoding(),
-      sharedMemorySpace,
-      /*mutableMemory=*/true);
+  auto allocTy = cast<ttg::MemDescType>(barrierAlloc.getType());
+  // barrierAlloc is typically allocated as <distance x numCTAs x i64> with a
+  // CGA-aware shared encoding when num_ctas > 1. When indexing the pipeline
+  // stage dimension, we must preserve the CTA dimension in the resulting
+  // memdesc shape (i.e., <numCTAs x i64>) to match the non-warp-specialize
+  // multi-CTA pipeline and satisfy layout verification.
+  SmallVector<int64_t> barrierShape;
+  auto allocShape = allocTy.getShape();
+  if (allocShape.size() >= 2)
+    barrierShape.push_back(allocShape.back());
+  else
+    barrierShape.push_back(1);
+  ttg::MemDescType barrierTy =
+      ttg::MemDescType::get(barrierShape, builder.getI64Type(),
+                            allocTy.getEncoding(), sharedMemorySpace,
+                            /*mutableMemory=*/true);
 
   // Create barrierForTMA from barrierAlloc.
   return builder.createWithAsyncTaskIds<ttg::MemDescIndexOp>(
