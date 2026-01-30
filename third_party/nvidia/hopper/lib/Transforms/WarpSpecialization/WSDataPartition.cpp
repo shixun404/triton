@@ -1204,99 +1204,50 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
     // recursively set async task ids for child ops
     newOp->walk(
         [&](Operation *childOp) { setAsyncTaskIds(childOp, sliceTaskIds); });
- } else if (auto reshapeOp = dyn_cast<ReshapeOp>(op)) {
-  // 0) 先 slice src（确保 src 已经变成 partition 后的形状/encoding）
-  Value src = reshapeOp.getSrc();
-  if (auto *srcDef = src.getDefiningOp()) {
-    sliceOp(srcDef, offset, mappings, reverseMappings, partitionScheme);
-  } else {
-    // block arg / region arg
-    sliceOp(src, offset, mappings, reverseMappings, partitionScheme);
-  }
-  Value newSrc = mappings.lookupOrNull(src);
-  assert(newSrc && "reshape src not sliced");
+  } else if (auto reshapeOp = dyn_cast<ReshapeOp>(op)) {
+    // 1) slice operand first
+    sliceOp(reshapeOp.getSrc(), offset, mappings, reverseMappings,
+            partitionScheme);
+    Value newSrc = mappings.lookupOrNull(reshapeOp.getSrc());
+    assert(newSrc && "reshape src not sliced");
 
-  auto oldSrcTy = dyn_cast<RankedTensorType>(src.getType());
-  auto newSrcTy = dyn_cast<RankedTensorType>(newSrc.getType());
-  auto oldDstTy = dyn_cast<RankedTensorType>(reshapeOp.getResult().getType());
-  if (!oldSrcTy || !newSrcTy || !oldDstTy)
-    llvm_unreachable("tt.reshape expects RankedTensorType src/dst");
+    // 2) compute sliced result type for this partition
+    auto oldOutTy = dyn_cast<RankedTensorType>(reshapeOp.getResult().getType());
+    auto newSrcTy = dyn_cast<RankedTensorType>(newSrc.getType());
+    if (!oldOutTy || !newSrcTy)
+      llvm_unreachable("tt.reshape expects RankedTensorType src/dst");
 
-  // 1) 用 src 的 partition dim（而不是 reshape 自己的 dim）
-  //    如果 scheme 里没单独存 value 的 dim，通常 reshapeOp 的 dim 会被标错；
-  //    这里我们尽量从 srcDef 的 op 上取 partition dim。
-  unsigned srcDim = DataPartitionScheme::noOpPartitionDim;
-  if (auto *srcDef = src.getDefiningOp()) {
-    auto it = partitionScheme.opPartitionDims.find(srcDef);
-    if (it != partitionScheme.opPartitionDims.end()) srcDim = it->second;
-  }
-  if (srcDim == DataPartitionScheme::noOpPartitionDim) {
-    // 没有 partition dim：直接 clone + type 用“对 newSrc 重新推导”的版本
-    // 这里最安全是保持原 dst shape（reshape 的语义 shape），不做切分。
-    // 因为 src 已经 sliced 了，dst 自然应该对应 sliced src 的 reshape。
-  }
+    SmallVector<int64_t> newOutShape(oldOutTy.getShape().begin(),
+                                    oldOutTy.getShape().end());
+    assert(dim < newOutShape.size() && "partition dim out of range for reshape");
+    int64_t sliceSize = newOutShape[dim] / numOfPartitions;
+    newOutShape[dim] = sliceSize;
 
-  auto prod = [](ArrayRef<int64_t> xs) -> int64_t {
-    int64_t p = 1;
-    for (int64_t v : xs) p *= v;
-    return p;
-  };
-
-  SmallVector<int64_t> oldSrcShape(oldSrcTy.getShape().begin(),
-                                  oldSrcTy.getShape().end());
-  SmallVector<int64_t> oldDstShape(oldDstTy.getShape().begin(),
-                                  oldDstTy.getShape().end());
-
-  // 2) 推导 dstDim：找到 stride 匹配的维度
-  unsigned dstDim = DataPartitionScheme::noOpPartitionDim;
-  if (srcDim != DataPartitionScheme::noOpPartitionDim) {
-    int64_t strideSrc = prod(ArrayRef<int64_t>(oldSrcShape).drop_front(srcDim + 1));
-    for (unsigned d = 0; d < oldDstShape.size(); ++d) {
-      int64_t strideDst = prod(ArrayRef<int64_t>(oldDstShape).drop_front(d + 1));
-      if (strideDst == strideSrc) {
-        dstDim = d;
-        break;
+    Attribute dstEnc;
+    Attribute srcEnc = newSrcTy.getEncoding();
+    if (srcEnc) {
+      auto *iface = cast<triton::DialectInferLayoutInterface>(&srcEnc.getDialect());
+      if (failed(iface->inferReshapeOpEncoding(newSrcTy.getShape(), srcEnc,
+                                               newOutShape, dstEnc,
+                                               op->getLoc()))) {
+        op->emitError("failed to infer reshape encoding for sliced operand");
+        llvm_unreachable("inferReshapeOpEncoding failed");
       }
     }
-    if (dstDim == DataPartitionScheme::noOpPartitionDim) {
-      op->emitError("cannot map partition dim through reshape (stride match failed)");
-      llvm_unreachable("reshape dim mapping failed");
-    }
-  }
+    auto newOutTy = RankedTensorType::get(newOutShape, oldOutTy.getElementType(),
+                                         dstEnc);
 
-  // 3) 构造 new dst shape：只切 dstDim
-  SmallVector<int64_t> newDstShape = oldDstShape;
-  if (dstDim != DataPartitionScheme::noOpPartitionDim) {
-    assert(newDstShape[dstDim] % numOfPartitions == 0 && "reshape dst dim not divisible");
-    newDstShape[dstDim] /= numOfPartitions;
-  }
+    // 3) clone op (preserve allow_reorder / efficient_layout attrs)
+    builder.setInsertionPoint(op);
+    newOp = builder.clone(*op, mappings);
+    setAsyncTaskIds(newOp, sliceTaskIds);
 
-  // 4) encoding：用 InferLayoutInterface 推导 sliced dst encoding
-  Attribute dstEnc;
-  Attribute srcEnc = newSrcTy.getEncoding();
-  if (srcEnc) {
-    auto *iface =
-        cast<triton::DialectInferLayoutInterface>(&srcEnc.getDialect());
-    if (failed(iface->inferReshapeOpEncoding(newSrcTy.getShape(), srcEnc,
-                                             newDstShape, dstEnc, op->getLoc()))) {
-      op->emitError("failed to infer reshape encoding for sliced operand");
-      llvm_unreachable("inferReshapeOpEncoding failed");
-    }
-  }
-
-  auto newDstTy = RankedTensorType::get(newDstShape, oldDstTy.getElementType(), dstEnc);
-
-  // 5) clone reshape
-  builder.setInsertionPoint(op);
-  newOp = builder.clone(*op, mappings);
-  setAsyncTaskIds(newOp, sliceTaskIds);
-
-  // 6) 更新 result type + mapping
-  Value oldRes = op->getResult(0);
-  Value newRes = newOp->getResult(0);
-  newRes.setType(newDstTy);
-  mappings.map(oldRes, newRes);
-  reverseMappings.map(newRes, oldRes);
+    // 4) update result type + value mappings
+    Value oldRes = op->getResult(0);
+    Value newRes = newOp->getResult(0);
+    newRes.setType(newOutTy);
+    mappings.map(oldRes, newRes);
+    reverseMappings.map(newRes, oldRes);
   } else if (auto splitOp = dyn_cast<SplitOp>(op)) {
     // 1) slice operand first (the input to split)
     sliceOp(splitOp.getSrc(), offset, mappings, reverseMappings,
