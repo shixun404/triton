@@ -224,6 +224,16 @@ class CompileTimer:
 
 
 def compile(src, target=None, options=None, _env_vars=None):
+    # import inspect
+
+    # f = inspect.currentframe()
+    # print(f"[HERE] {f.f_code.co_filename}:{f.f_lineno} in {f.f_code.co_name}")
+
+    # import traceback
+    # print("=== stack trace ===")
+    # traceback.print_stack(limit=8)
+
+    
     compilation_listener = knobs.compilation.listener
     if compilation_listener:
         timer = CompileTimer()
@@ -303,6 +313,9 @@ def compile(src, target=None, options=None, _env_vars=None):
 
     codegen_fns = backend.get_codegen_implementation(options)
     module_map = backend.get_module_map()
+
+    ##########################
+    # Make IR 
     try:
         module = src.make_ir(target, options, codegen_fns, module_map, context)
     except Exception as e:
@@ -315,7 +328,6 @@ def compile(src, target=None, options=None, _env_vars=None):
     else:
         ir_filename = f"{file_name}.source"
         metadata_group[ir_filename] = fn_cache_manager.put(module, ir_filename)
-
     use_ir_loc = knobs.compilation.use_ir_loc
     if ir_source and use_ir_loc:
         module.create_location_snapshot(src.path)
@@ -323,9 +335,13 @@ def compile(src, target=None, options=None, _env_vars=None):
 
     if compilation_listener:
         timer.finished_ir_initialization()
+    ####################################################
+    # stage chain（TTIR → LLVM IR → PTX → cubin …）
     for ext, compile_ir in list(stages.items())[first_stage:]:
-        next_module = compile_ir(module, metadata)
         ir_filename = f"{file_name}.{ext}"
+        print(ir_filename)
+        next_module = compile_ir(module, metadata)
+        
         if fn_override_manager is None:
             # Users can override kernels at scale by setting `ir_override` in autotune config
             # without TRITON_KERNEL_OVERRIDE

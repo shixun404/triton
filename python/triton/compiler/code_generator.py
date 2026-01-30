@@ -1645,6 +1645,8 @@ def ast_to_ttir(fn, src, context, options, codegen_fns, module_map, module=None)
     constants = {fn.arg_names[i[0]]: src.constants[i] for i in leaves}
     signature = src.signature
     proxy = namedtuple("SpecializationProxy", ["constants", "signature"])(constants, signature)
+    # print("file_name:beginline: ", file_name, ":", begin_line)
+    # print("proxy: ", proxy)
     generator = CodeGenerator(context, prototype, gscope=fn.get_capture_scope(), function_name=fn.repr(proxy),
                               jit_fn=fn, is_kernel=True, file_name=file_name, begin_line=begin_line, options=options,
                               codegen_fns=codegen_fns, module_map=module_map, module=module, is_gluon=fn.is_gluon())
@@ -1652,6 +1654,10 @@ def ast_to_ttir(fn, src, context, options, codegen_fns, module_map, module=None)
     module = generator.module
     # module takes ownership of the context
     module.context = context
+    # print("=== TTIR module ===")
+    # print(module)
+    # print("finished generator")
+    # assert 0
     if not module.verify():
         if not fn.is_gluon():
             print(module)
