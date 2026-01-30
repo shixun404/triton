@@ -1202,6 +1202,12 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
     newOp->walk(
         [&](Operation *childOp) { setAsyncTaskIds(childOp, sliceTaskIds); });
   } else {
+    op->emitError("unsupported op type in WSDataPartition");
+    llvm::errs() << "[WSDataPartition] unsupported op: " << op->getName() << "\n";
+    llvm::errs() << "  loc: " << op->getLoc() << "\n";
+    llvm::errs() << "  op: ";
+    op->print(llvm::errs());
+    llvm::errs() << "\n";
     llvm_unreachable("unsupported op type");
   }
 
