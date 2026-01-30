@@ -273,6 +273,25 @@ def test_warp_specialize_tma_matmul(M, N, K, BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_S
     kernel = matmul_tma_ws_kernel[grid](A, B, C, *A.stride(), *B.stride(), *C.stride(), M, N, K, num_stages,
                                         BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K, GROUP_SIZE_M, num_warps=num_warps,
                                         USE_FP8=use_fp8)
+    quantiles = [0.5, 0.2, 0.8]  # median, min, max
+    
+    # Benchmark triton kernel
+    ms, min_ms, max_ms = triton.testing.do_bench(
+        lambda: matmul_tma_ws_kernel[grid](A, B, C, *A.stride(), *B.stride(), *C.stride(), M, N, K, num_stages,
+                      BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K, GROUP_SIZE_M, USE_FP8=use_fp8),
+        quantiles=quantiles
+    )
+    
+    print(f"Triton kernel: {ms:.3f}ms (min: {min_ms:.3f}ms, max: {max_ms:.3f}ms)")
+    
+    ref_out = torch.empty((M, N), dtype=dtype, device=device)
+    # 可选：对比 cuBLAS
+    cublas_ms, cublas_min, cublas_max = triton.testing.do_bench(
+        lambda: cublas.matmul(A, B, ref_out),
+        quantiles=quantiles
+    )
+    print(f"cuBLAS: {cublas_ms:.3f}ms (min: {cublas_min:.3f}ms, max: {cublas_max:.3f}ms)")
+
     ttgir = kernel.asm["ttgir"]
     if is_blackwell():
         assert "ttng.tc_gen5_mma" in ttgir
