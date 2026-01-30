@@ -199,6 +199,43 @@ static SmallVector<int64_t> getShape(Type type) {
 
 static SmallVector<int64_t> getShape(Value v) { return getShape(v.getType()); }
 
+// Map the partitioned dimension through a trans op.
+//
+// For TransOp semantics: result[i] = src[order[i]].
+// - Backward traversal (result -> src): dim becomes order[dim].
+// - Forward traversal  (src -> result): dim becomes inverse(order)[dim].
+static unsigned transMapBackward(Operation *op, unsigned dim) {
+  if (dim == DataPartitionScheme::noOpPartitionDim)
+    return dim;
+  if (auto transOp = dyn_cast<TransOp>(op)) {
+    ArrayRef<int32_t> order = transOp.getOrder();
+    assert(dim < order.size() && "dim out of range for trans");
+    return static_cast<unsigned>(order[dim]);
+  }
+  if (auto transOp = dyn_cast<MemDescTransOp>(op)) {
+    auto order = transOp.getOrder();
+    assert(dim < order.size() && "dim out of range for memdesc.trans");
+    return static_cast<unsigned>(order[dim]);
+  }
+  return dim;
+}
+
+static unsigned transMapForward(Operation *op, unsigned dim) {
+  if (dim == DataPartitionScheme::noOpPartitionDim)
+    return dim;
+  auto findInverse = [&](ArrayRef<int32_t> order) -> unsigned {
+    for (unsigned i = 0; i < order.size(); ++i)
+      if (static_cast<unsigned>(order[i]) == dim)
+        return i;
+    llvm_unreachable("dim not present in trans order");
+  };
+  if (auto transOp = dyn_cast<TransOp>(op))
+    return findInverse(transOp.getOrder());
+  if (auto transOp = dyn_cast<MemDescTransOp>(op))
+    return findInverse(transOp.getOrder());
+  return dim;
+}
+
 static bool needToSlice(Value v, unsigned dim, int size) {
   if (dim == DataPartitionScheme::noOpPartitionDim)
     return true;
@@ -258,9 +295,8 @@ static bool getBackwardSliceToPartition(Value v,
     }
     partitionScheme.opPartitionDims[op] = currentDim;
 
-    // Flip dim when op is trans
-    if (isa<TransOp, MemDescTransOp>(op))
-      currentDim = partitionScheme.flipPartitionDim(currentDim);
+    // Map dim through trans when traversing backward (result -> src).
+    currentDim = transMapBackward(op, currentDim);
 
     if (auto expandDimsOp = dyn_cast<ExpandDimsOp>(op)) {
       // currentDim is the dim after expansion.
@@ -360,9 +396,8 @@ static bool getForwardSliceToPartition(Value v,
   unsigned originalDim = currentDim;
   for (Operation *depOp : v.getUsers()) {
     currentDim = originalDim;
-    // Flip dim when op is trans
-    if (isa<TransOp, MemDescTransOp>(depOp))
-      currentDim = partitionScheme.flipPartitionDim(currentDim);
+    // Map dim through trans when traversing forward (src -> result).
+    currentDim = transMapForward(depOp, currentDim);
 
     // Check dim compatibility
     if (!partitionScheme.ops.insert(depOp)) {
@@ -702,8 +737,8 @@ static void rewriteRematerializedOps(triton::FuncOp &funcOp,
                "user not partitioned");
         unsigned userDim = partitionScheme.opPartitionDims[user];
         if (isa<TransOp, MemDescTransOp>(user)) {
-          // flip userDim for trans
-          userDim = partitionScheme.flipPartitionDim(userDim);
+          // User is trans: compare against the dim on trans's operand (src).
+          userDim = transMapBackward(user, userDim);
         } else if (auto dotOp = dyn_cast<nvidia_gpu::WarpGroupDotOp>(user)) {
           // infer userDim for dot
           assert(partitionScheme.dotPartitionOperand.contains(user) &&
