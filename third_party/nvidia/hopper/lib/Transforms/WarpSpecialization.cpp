@@ -103,6 +103,12 @@ public:
           << moduleOp << "\n\n\n";
     }
     doTokenLowering(funcOp, numWarpGroups - 1);
+
+    if (dumpIntermediateSteps) {
+      llvm::dbgs()
+          << "// -----// WarpSpec internal IR Dump After: doTokenLowering\n"
+          << moduleOp << "\n\n\n";
+    }
     // Clear num_stages to disable SWP.
     funcOp->walk([&](scf::ForOp forOp) {
       forOp->setAttr(mlir::triton::kNumStagesAttrName,
