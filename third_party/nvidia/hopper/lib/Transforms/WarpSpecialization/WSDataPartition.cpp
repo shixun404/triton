@@ -1035,8 +1035,11 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
     if (!oldOutTy)
       llvm_unreachable("tt.trans expects RankedTensorType result");
 
-    ArrayRef<int32_t> order = transOp.getOrder().asArrayRef();
-    SmallVector<int64_t> newOutShape = applyPermutation(srcTy.getShape(), order);
+    ArrayRef<int32_t> order = transOp.getOrder();
+    SmallVector<int64_t> newOutShape;
+    newOutShape.reserve(order.size());
+    for (int32_t d : order)
+      newOutShape.push_back(srcTy.getShape()[d]);
 
     // 3) infer encoding for trans
     Attribute dstEnc = oldOutTy.getEncoding();
