@@ -187,6 +187,7 @@ def main():
     ap.add_argument("--iters", type=int, default=5)
     ap.add_argument("--warmup", type=int, default=3)
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--save", action="store_true")
     args = ap.parse_args()
 
     torch.manual_seed(0)
@@ -228,7 +229,7 @@ def main():
                                 )
     # configs = [Cfg(256, 256, 64, group_m=8, warps=8, stages=4, num_ctas=2, WS=False)]
     # configs = [Cfg(128, 256, 64, group_m=8, warps=4, stages=3, num_ctas=1, WS=True)]
-    # configs = [Cfg(128, 256, 64, group_m=8, warps=4, stages=4, num_ctas=1, WS=False)]
+    configs = [Cfg(128, 256, 64, group_m=8, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=True)]
     iter_list = [100, 100, 10, 5, 5]
     multiplier_list = [1, 2, 4, 8, 16]
     # for id in range(len(iter_list)): 
@@ -288,17 +289,18 @@ def main():
                 print(current_cfg)
                 print(f"Error: {type(e).__name__}: {e}")
                 # assert 0
-            csv_output = "\n".join(csv_lines)
-            with open(f"/home/tiger/triton/result/triton_dist_3.6_persistent.csv", "w") as f:
-                f.write(csv_output)
+            if args.save:
+                csv_output = "\n".join(csv_lines)
+                with open(f"/home/tiger/triton/result/triton_dist_3.6_persistent.csv", "w") as f:
+                    f.write(csv_output)
             torch.cuda.synchronize()
             import time
             time.sleep(1)
             torch.cuda.synchronize()
-
-    csv_output = "\n".join(csv_lines)
-    with open(f"/home/tiger/triton/result/triton_dist_3.6_persistent.csv", "w") as f:
-        f.write(csv_output)
+    if args.save:
+        csv_output = "\n".join(csv_lines)
+        with open(f"/home/tiger/triton/result/triton_dist_3.6_persistent.csv", "w") as f:
+            f.write(csv_output)
 
 if __name__ == "__main__":
     main()
