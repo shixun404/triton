@@ -192,31 +192,34 @@ def store_partition(descs, barriers, buffers, xoff, numel, YBLOCK: gl.constexpr)
 # The default partition can have a different signature than the worker partition
 # functions.
 @gluon.jit
-def compute_partition(barriers, buffers, ynumel, YBLOCK: gl.constexpr, layout: gl.constexpr):
+def compute_partition(start_pid, num_pid, num_sms, barriers, buffers, K, BLOCK_K: gl.constexpr, layout: gl.constexpr):
     load_empty_bars, load_ready_bars, c_empty_bars, c_ready_bars = barriers
     a_bufs, b_bufs, c_bufs = buffers
 
     num_load_buffers: gl.constexpr = a_bufs.type.shape[0]
     num_store_buffers: gl.constexpr = c_bufs.type.shape[0]
+    num_k_loop = gl.cdiv(K, BLOCK_K)
+    num_tiles = gl.cdiv(num_pid - start_pid, num_sms)
+    for tile in range(num_tiles):
+        for i in range(num_k_loop):
+            load_index = i % num_load_buffers
+            load_phase = i // num_load_buffers & 1
+            a_buf = a_bufs.index(load_index)
+            b_buf = b_bufs.index(load_index)
+            load_ready_bar = load_ready_bars.index(load_index)
+            load_empty_bar = load_empty_bars.index(load_index)
 
-    for i in range(gl.cdiv(ynumel, YBLOCK)):
-        load_index = i % num_load_buffers
-        load_phase = i // num_load_buffers & 1
-        a_buf = a_bufs.index(load_index)
-        b_buf = b_bufs.index(load_index)
-        load_ready_bar = load_ready_bars.index(load_index)
-        load_empty_bar = load_empty_bars.index(load_index)
+            # Wait for the operands then consume them.
+            mbarrier.wait(load_ready_bar, load_phase)
+            a_val = a_buf.load(layout)
+            b_val = b_buf.load(layout)
+            # Fence before signalling the load partitions so the TMA load is
+            # ordered with the shared load.
+            fence_async_shared()
+            mbarrier.arrive(load_empty_bar, count=1)
 
-        # Wait for the operands then consume them.
-        mbarrier.wait(load_ready_bar, load_phase)
-        a_val = a_buf.load(layout)
-        b_val = b_buf.load(layout)
-        # Fence before signalling the load partitions so the TMA load is
-        # ordered with the shared load.
-        fence_async_shared()
-        mbarrier.arrive(load_empty_bar, count=1)
-
-        c_val = a_val + b_val
+            # matmul
+            c_val = a_val + b_val
 
         store_idx = i % num_store_buffers
         store_phase = i // num_store_buffers & 1
@@ -235,7 +238,8 @@ def compute_partition(barriers, buffers, ynumel, YBLOCK: gl.constexpr, layout: g
 def gemm_warp_specialized_kernel(  #
         a_desc, b_desc, c_desc,  #
         M, N, K, BLOCK_M: gl.constexpr, BLOCK_N: gl.constexpr, BLOCK_K: gl.constexpr,  #
-        num_load_buffers: gl.constexpr, num_store_buffers: gl.constexpr, num_warps: gl.constexpr):
+        num_load_buffers: gl.constexpr, num_store_buffers: gl.constexpr, num_warps: gl.constexpr,
+        num_pid: gl.constexpr, num_sms: gl.constexpr):
     # Pick a layout that makes it easy to avoid bank conflicts.
     layout: gl.constexpr = gl.BlockedLayout([1, 1], [1, 32], [1, num_warps], [1, 0])
 
@@ -260,7 +264,7 @@ def gemm_warp_specialized_kernel(  #
     buffers = (a_bufs, b_bufs, c_bufs)
     # numel = (xnumel, ynumel)
 
-    # pid = gl.program_id(0)
+    pid = gl.program_id(0)
     # xoff = pid * XBLOCK
 
     # `gl.warp_specialize` declares a warp-specialized section of the kernel.
@@ -276,18 +280,20 @@ def gemm_warp_specialized_kernel(  #
     # warps to reduce the amount of registers allocated. The default partition
     # receives whatever registers are left over, based on `maxnreg` passed to
     # the kernel.
-    # gl.warp_specialize([
-    #     (compute_partition, (barriers, buffers, ynumel, YBLOCK, layout)),
-    #     (load_partition, (descs, barriers, buffers, xoff, numel, YBLOCK)),
-    #     (store_partition, (descs, barriers, buffers, xoff, numel, YBLOCK)),
-    # ], [1, 1], [24, 24])
+    gl.warp_specialize([
+        (compute_partition, (pid, num_pid, num_sms, barriers, buffers, K, BLOCK_K, layout)),
+        (load_partition, (descs, barriers, buffers, xoff, numel, YBLOCK)),
+        (store_partition, (descs, barriers, buffers, xoff, numel, YBLOCK)),
+    ], [1, 1], [24, 24])
 
 
 def gemm_warp_specialized(a, b, c, BLOCK_M=128, BLOCK_N=128, BLOCK_K=64, #
                                      num_load_buffers=2, num_store_buffers=2, num_warps=4):
     M, K = a.shape
     K, N = b.shape
-    grid = (triton.cdiv(M, BLOCK_M), triton.cdiv(N, BLOCK_N))
+    num_sms = torch.cuda.get_device_properties("cuda").multi_processor_count
+    num_pid = triton.cdiv(M, BLOCK_M) * triton.cdiv(N, BLOCK_N)
+    grid = (min(num_sms, num_pid), )
 
     block_shape_a = [BLOCK_M, BLOCK_K]
     block_shape_b = [BLOCK_K, BLOCK_N]
@@ -310,7 +316,7 @@ def gemm_warp_specialized(a, b, c, BLOCK_M=128, BLOCK_N=128, BLOCK_K=64, #
     gemm_warp_specialized_kernel[grid](  #
         a_desc, b_desc, c_desc, M, N, K,  #
         BLOCK_M, BLOCK_N, BLOCK_K, num_load_buffers, num_store_buffers,  #
-        num_warps=num_warps, maxnreg=128)
+        num_warps=num_warps, maxnreg=128, num_pid=num_pid, num_sms=num_sms)
 
 
 @pytest.mark.parametrize("M, N, K", [(2048, 2048, 2048)])
