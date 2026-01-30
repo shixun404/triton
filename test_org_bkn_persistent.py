@@ -18,7 +18,9 @@ def matmul_kernel_tma(
     BLOCK_SIZE_N: tl.constexpr,
     BLOCK_SIZE_K: tl.constexpr,
     GROUP_SIZE_M: tl.constexpr,
+    num_stages: tl.constexpr,
     WS: tl.constexpr,
+    FLATTEN: tl.constexpr,
 ):
     # Descriptors
     a_desc = tl.make_tensor_descriptor(
@@ -41,37 +43,41 @@ def matmul_kernel_tma(
     )
 
 
-    pid = tl.program_id(axis=0)
+    start_pid = tl.program_id(axis=0)
     num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
     num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
+    num_tiles = num_pid_m * num_pid_n
 
     num_pid_in_group = GROUP_SIZE_M * num_pid_n
-    group_id = pid // num_pid_in_group
-    first_pid_m = group_id * GROUP_SIZE_M
+    
+    for pid in tl.range(start_pid, num_tiles, 132, num_stages=num_stages, warp_specialize=WS, flatten=FLATTEN):
+        group_id = pid // num_pid_in_group
+        first_pid_m = group_id * GROUP_SIZE_M
 
-    pid_m = first_pid_m + (pid % GROUP_SIZE_M)
-    pid_n = (pid % num_pid_in_group) // GROUP_SIZE_M
+        pid_m = first_pid_m + (pid % GROUP_SIZE_M)
+        pid_n = (pid % num_pid_in_group) // GROUP_SIZE_M
 
-    # # guard (in case grid is oversized)
-    # if pid_m >= num_pid_m:
-    #     return
+        # # guard (in case grid is oversized)
+        # if pid_m >= num_pid_m:
+        #     return
 
-    k_tiles = tl.cdiv(K, BLOCK_SIZE_K)
+        k_tiles = tl.cdiv(K, BLOCK_SIZE_K)
 
-    offs_am = pid_m * BLOCK_SIZE_M
-    offs_bn = pid_n * BLOCK_SIZE_N
+        offs_am = pid_m * BLOCK_SIZE_M
+        offs_bn = pid_n * BLOCK_SIZE_N
 
-    acc = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
+        acc = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
 
-    # Your requested warp_specialize=True
-    for kt in tl.range(0, k_tiles, warp_specialize=WS):
-        offs_k = kt * BLOCK_SIZE_K
-        a = a_desc.load([offs_am, offs_k])   # [BM, BK]
-        b = b_desc.load([offs_k, offs_bn])   # [BN, BK]
-        acc = tl.dot(a, b, acc)            # [BM,BK] x [BK,BN] -> [BM,BN]
+        # Your requested warp_specialize=True
+        for kt in tl.range(k_tiles):
+            offs_k = kt * BLOCK_SIZE_K
+            a = a_desc.load([offs_am, offs_k])   # [BM, BK]
+            b = b_desc.load([offs_k, offs_bn])   # [BN, BK]
+            acc = tl.dot(a, b, acc)            # [BM,BK] x [BK,BN] -> [BM,BN]
 
-    c = acc.to(tl.bfloat16)
-    c_desc.store([offs_am, offs_bn], c)
+        c = acc.to(tl.bfloat16)
+        c_desc.store([offs_am, offs_bn], c)
+
 
 
     # c_desc = tl.make_tensor_descriptor(
@@ -126,13 +132,15 @@ class Cfg:
     stages: int
     num_ctas: int = 1   
     WS: bool = False
+    FLATTEN: bool = False
 
 
 def run_kernel(A, Bkn, C, cfg: Cfg):
     M, K = A.shape
     N = Bkn.shape[1]
 
-    grid = (triton.cdiv(M, cfg.bm) * triton.cdiv(N, cfg.bn),)
+    # grid = (triton.cdiv(M, cfg.bm) * triton.cdiv(N, cfg.bn),)
+    grid = (132,)
 
     matmul_kernel_tma[grid](
         A, Bkn, C,
@@ -148,6 +156,7 @@ def run_kernel(A, Bkn, C, cfg: Cfg):
         num_stages=cfg.stages,   # launch option (ONLY ONCE)
         num_ctas=cfg.num_ctas,   # launch option (ONLY ONCE)
         WS=cfg.WS,
+        FLATTEN=cfg.FLATTEN,
     )
 
 def bench(A, Bkn, C, cfg: Cfg, iters: int, warmup: int):
@@ -175,8 +184,8 @@ def bench(A, Bkn, C, cfg: Cfg, iters: int, warmup: int):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--iters", type=int, default=2)
-    ap.add_argument("--warmup", type=int, default=1)
+    ap.add_argument("--iters", type=int, default=5)
+    ap.add_argument("--warmup", type=int, default=3)
     ap.add_argument("--check", action="store_true")
     args = ap.parse_args()
 
@@ -196,8 +205,8 @@ def main():
     dtype = torch.bfloat16
     device = "cuda"
     csv_lines = []
-    csv_lines.append("M,N,K,BM,BN,BK,GROUP_M,WARPS,STAGES,CTAS,WS,itrs,wmp,ms,TFLOPs")
-    print("M,N,K,BM,BN,BK,GROUP_M,WARPS,STAGES,CTAS,WS,itrs,wmp,ms,TFLOPs")
+    csv_lines.append("M,N,K,BM,BN,BK,GROUP_M,WARPS,STAGES,CTAS,WS,flatten,itrs,wmp,ms,TFLOPs")
+    print("M,N,K,BM,BN,BK,GROUP_M,WARPS,STAGES,CTAS,WS,flatten,itrs,wmp,ms,TFLOPs")
     configs = []
 
     for BLOCK_M in [256, 128]:
@@ -205,21 +214,22 @@ def main():
             for BLOCK_K in [64]:
                 for group_m in [1, 2, 4, 8]:
                         for stages in [3, 4, 5]:
-                            configs.append(
-                                Cfg(BLOCK_M, BLOCK_N, BLOCK_K, group_m, warps=8, stages=stages, num_ctas=2, WS=False)
-                            )
-                            # if BLOCK_M == 256 and BLOCK_N == 256:    
-                            #     continue
-                            configs.append(
-                                Cfg(BLOCK_M, BLOCK_N, BLOCK_K, group_m, warps=8, stages=stages, num_ctas=1, WS=False)
-                            )
-                            configs.append(
-                                Cfg(BLOCK_M, BLOCK_N, BLOCK_K, group_m, warps=4, stages=stages, num_ctas=1, WS=True)
-                            )
-    
-
-
-    iter_list = [100, 100, 10, 5, 3]
+                            for flatten in [False, True]:
+                                configs.append(
+                                Cfg(BLOCK_M, BLOCK_N, BLOCK_K, group_m, warps=8, stages=stages, num_ctas=2, WS=False, FLATTEN=flatten)
+                                )
+                                # if BLOCK_M == 256 and BLOCK_N == 256:    
+                                #     continue
+                                configs.append(
+                                    Cfg(BLOCK_M, BLOCK_N, BLOCK_K, group_m, warps=8, stages=stages, num_ctas=1, WS=False, FLATTEN=flatten)
+                                )
+                                configs.append(
+                                    Cfg(BLOCK_M, BLOCK_N, BLOCK_K, group_m, warps=4, stages=stages, num_ctas=1, WS=True, FLATTEN=flatten)
+                                )
+    # configs = [Cfg(256, 256, 64, group_m=8, warps=8, stages=4, num_ctas=2, WS=False)]
+    # configs = [Cfg(128, 256, 64, group_m=8, warps=4, stages=3, num_ctas=1, WS=True)]
+    # configs = [Cfg(128, 256, 64, group_m=8, warps=4, stages=4, num_ctas=1, WS=False)]
+    iter_list = [100, 100, 10, 5, 5]
     multiplier_list = [1, 2, 4, 8, 16]
     # for id in range(len(iter_list)): 
     for id in [4]: 
@@ -265,17 +275,21 @@ def main():
 
        
         for cfg in configs:
+            current_cfg = f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},{cfg.num_ctas},{cfg.WS},{cfg.FLATTEN},{args.iters},{args.warmup},"
             try:
                 ms, tflops = bench(A, Bkn, C, cfg, iters=args.iters, warmup=args.warmup)
                 # ms, tflops = bench(A, Bnk, C, cfg, iters=args.iters, warmup=args.warmup)
-                csv_lines.append(f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},{cfg.num_ctas},{cfg.WS},{args.iters},{args.warmup},{ms:.6f},{tflops:.2f}")
-                print(f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},{cfg.num_ctas},{cfg.WS},{args.iters},{args.warmup},{ms:.6f},{tflops:.2f}")
+                current_cfg += f"{ms:.6f},{tflops:.2f}"
+                csv_lines.append(current_cfg)
+                print(current_cfg)
             except Exception as e:
                 # Skip all errors (e.g., OutOfResources)
-                csv_lines.append(f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},{cfg.num_ctas},{cfg.WS},{args.iters},{args.warmup},NaN,NaN")
-                print(f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},{cfg.num_ctas},{cfg.WS},{args.iters},{args.warmup},NaN,NaN  # {type(e).__name__}: {e}")
+                current_cfg += f"NaN,NaN"
+                print(current_cfg)
+                print(f"Error: {type(e).__name__}: {e}")
+                # assert 0
             csv_output = "\n".join(csv_lines)
-            with open(f"/home/tiger/triton/result/triton_dist_3.6.csv", "w") as f:
+            with open(f"/home/tiger/triton/result/triton_dist_3.6_persistent.csv", "w") as f:
                 f.write(csv_output)
             torch.cuda.synchronize()
             import time
@@ -283,7 +297,7 @@ def main():
             torch.cuda.synchronize()
 
     csv_output = "\n".join(csv_lines)
-    with open(f"/home/tiger/triton/result/triton_dist_3.6.csv", "w") as f:
+    with open(f"/home/tiger/triton/result/triton_dist_3.6_persistent.csv", "w") as f:
         f.write(csv_output)
 
 if __name__ == "__main__":
