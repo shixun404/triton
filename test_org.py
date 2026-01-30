@@ -205,8 +205,8 @@ def main():
         C = torch.empty((M, N), device=device, dtype=dtype)
 
         configs = [
-            # Cfg(256, 128, 64, group_m=8, warps=4, stages=3, num_ctas=2, WS=True),
-            Cfg(256, 128, 64, group_m=8, warps=8, stages=3, num_ctas=2, WS=False),
+            Cfg(256, 256, 64, group_m=8, warps=8, stages=4, num_ctas=2, WS=False),
+            # Cfg(256, 128, 64, group_m=8, warps=8, stages=3, num_ctas=2, WS=False),
             # Cfg(128, 256, 64, group_m=8, warps=4, stages=3, WS=False),
             # Cfg(256, 128, 64, group_m=8, warps=8, stages=4),
             # Cfg(128, 128, 64, group_m=8, warps=8, stages=4),
