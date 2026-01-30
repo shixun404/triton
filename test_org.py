@@ -29,10 +29,16 @@ def matmul_kernel_tma(
     )
     b_desc = tl.make_tensor_descriptor(
         b_ptr,
-        shape=[N, K],
-        strides=[stride_bn, stride_bk],
-        block_shape=[BLOCK_SIZE_N, BLOCK_SIZE_K],
+        shape=[K, N],
+        strides=[stride_bk, stride_bn],
+        block_shape=[BLOCK_SIZE_K, BLOCK_SIZE_N],
     )
+    # b_desc = tl.make_tensor_descriptor(
+    #     b_ptr,
+    #     shape=[N, K],
+    #     strides=[stride_bn, stride_bk],
+    #     block_shape=[BLOCK_SIZE_N, BLOCK_SIZE_K],
+    # )
     c_desc = tl.make_tensor_descriptor(
         c_ptr,
         shape=[M, N],
@@ -79,8 +85,9 @@ def matmul_kernel_tma(
     for kt in tl.range(0, k_tiles, warp_specialize=WS):
         offs_k = kt * BLOCK_SIZE_K
         a = a_desc.load([offs_am, offs_k])   # [BM, BK]
-        b = b_desc.load([offs_bn, offs_k])   # [BN, BK]
-        acc = tl.dot(a, b.T, acc)            # [BM,BK] x [BK,BN] -> [BM,BN]
+        b = b_desc.load([offs_k, offs_bn])   # [BN, BK]
+        # b = b_desc.load([offs_bn, offs_k])   # [BN, BK]
+        acc = tl.dot(a, b, acc)            # [BM,BK] x [BK,BN] -> [BM,BN]
 
     # acc = tl.reshape(acc, (BLOCK_SIZE_M, 2, BLOCK_SIZE_N // 2))
     # acc = tl.permute(acc, (0, 2, 1))
@@ -121,7 +128,7 @@ class Cfg:
     group_m: int
     warps: int
     stages: int
-    num_ctas: int   
+    num_ctas: int = 1   
     WS: bool = False
 
 
@@ -200,12 +207,12 @@ def main():
         N = i * n
         K = i * k
         # B is [N, K] (so b.T is [K, N])
-        A = torch.randn((M, K), device=device, dtype=dtype) * 0.1
-        Bnk = torch.randn((N, K), device=device, dtype=dtype) * 0.1
+        A = torch.randn((M, K), device=device, dtype=dtype) #* 0.1
+        Bnk = torch.randn((N, K), device=device, dtype=dtype) #* 0.1
         C = torch.empty((M, N), device=device, dtype=dtype)
 
         configs = [
-            Cfg(256, 256, 64, group_m=8, warps=8, stages=4, num_ctas=2, WS=False),
+            Cfg(256, 128, 64, group_m=8, warps=8, stages=4, num_ctas=2, WS=False),
             # Cfg(256, 128, 64, group_m=8, warps=8, stages=3, num_ctas=2, WS=False),
             # Cfg(128, 256, 64, group_m=8, warps=4, stages=3, WS=False),
             # Cfg(256, 128, 64, group_m=8, warps=8, stages=4),
