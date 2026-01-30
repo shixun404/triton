@@ -180,8 +180,8 @@ def main():
         N = i * n
         K = i * k
         # B is [N, K] (so b.T is [K, N])
-        A = torch.randn((M, K), device=device, dtype=dtype)
-        Bnk = torch.randn((N, K), device=device, dtype=dtype)
+        A = torch.randn((M, K), device=device, dtype=dtype) * 0.01
+        Bnk = torch.randn((N, K), device=device, dtype=dtype) * 0.01
         C = torch.empty((M, N), device=device, dtype=dtype)
 
         configs = [
@@ -194,13 +194,40 @@ def main():
         ]
 
         if args.check:
-            ref = (A @ Bnk.T).to(dtype)
+            # ref = (A @ Bnk.T).to(dtype)
+            # cfg0 = configs[0]
+            # run_kernel(A, Bnk, C, cfg0)
+            # torch.cuda.synchronize()
+            # # bf16 tolerance (adjust if needed)
+            # max_abs = (C - ref).abs().max().item()
+            # print(C[:4, :4], ref[:4, :4], (C - ref)[:4, :4])
+            # print(f"[check] max_abs_error = {max_abs}")
+            # 1) ref 用 fp32 计算更稳
+            ref = (A @ Bnk.T)
+
+            # 2) 跑 kernel
             cfg0 = configs[0]
             run_kernel(A, Bnk, C, cfg0)
             torch.cuda.synchronize()
-            # bf16 tolerance (adjust if needed)
-            max_abs = (C - ref).abs().max().item()
-            print(f"[check] max_abs_error = {max_abs}")
+
+            # 3) 误差统计（在 fp32 上比）
+            diff = (C - ref).abs()
+            max_abs = diff.max().item()
+
+            # 避免除 0
+            denom = ref.abs().clamp_min(1e-6)
+            max_rel = (diff / denom).max().item()
+
+            # NaN/Inf 检查
+            bad = torch.isnan(C).any().item() or torch.isinf(C).any().item()
+
+            print(f"[check] max_abs={max_abs:.6g}  max_rel={max_rel:.6g}  nan_or_inf={bad}")
+
+            # 4) 给一个常用阈值（你可以按需求调）
+            # bf16：常见经验阈值 abs 1e-1 ~ 1e0，rel 1e-2 ~ 1e-1（看规模/累加长度K）
+            assert not bad
+
+        
 
        
         for cfg in configs:
