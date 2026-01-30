@@ -40,6 +40,12 @@ def matmul_kernel_tma(
     #     block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_N],
     # )
 
+    # c_desc = tl.make_tensor_descriptor(
+    #     c_ptr,
+    #     shape=[M, N],
+    #     strides=[stride_cm, stride_cn],
+    #     block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_N // 4],
+    # )
     c_desc = tl.make_tensor_descriptor(
         c_ptr,
         shape=[M, N],
@@ -83,6 +89,18 @@ def matmul_kernel_tma(
     c_desc.store([offs_am, offs_bn], c0)
     c1 = acc1.to(tl.bfloat16)
     c_desc.store([offs_am, offs_bn + BLOCK_SIZE_N // 2], c1)
+    
+    # acc = tl.reshape(acc, (BLOCK_SIZE_M, 4, BLOCK_SIZE_N // 4))
+    # acc = tl.permute(acc, (0, 2, 1))
+    # acc0, acc1, acc2, acc3 = tl.split(acc)
+    # c0 = acc0.to(tl.bfloat16)
+    # c_desc.store([offs_am, offs_bn], c0)
+    # c1 = acc1.to(tl.bfloat16)
+    # c_desc.store([offs_am, offs_bn + BLOCK_SIZE_N // 4], c1)
+    # c2 = acc2.to(tl.bfloat16)
+    # c_desc.store([offs_am, offs_bn + 2 * (BLOCK_SIZE_N // 4)], c2)
+    # c3 = acc3.to(tl.bfloat16)
+    # c_desc.store([offs_am, offs_bn + 3 * (BLOCK_SIZE_N // 4)], c3)
 
     # c = acc.to(tl.bfloat16)
     # c_desc.store([offs_am, offs_bn], c)
@@ -180,8 +198,8 @@ def main():
         N = i * n
         K = i * k
         # B is [N, K] (so b.T is [K, N])
-        A = torch.randn((M, K), device=device, dtype=dtype) * 0.01
-        Bnk = torch.randn((N, K), device=device, dtype=dtype) * 0.01
+        A = torch.randn((M, K), device=device, dtype=dtype) * 0.1
+        Bnk = torch.randn((N, K), device=device, dtype=dtype) * 0.1
         C = torch.empty((M, N), device=device, dtype=dtype)
 
         configs = [
