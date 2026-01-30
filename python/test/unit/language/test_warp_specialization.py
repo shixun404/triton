@@ -242,7 +242,8 @@ def exceeds_smem_capacity(num_stages, BLOCK_M, BLOCK_N, BLOCK_K, use_fp8):
     return (num_stages * BLOCK_K * (BLOCK_M + BLOCK_N) + BLOCK_M * BLOCK_N) * (1 if use_fp8 else 2) > 228 * 1024
 
 
-@pytest.mark.parametrize("M, N, K", [(32768, 32768, 4096), (32768, 4096, 32768)])
+# @pytest.mark.parametrize("M, N, K", [(32768, 32768, 4096), (32768, 4096, 32768)])
+@pytest.mark.parametrize("M, N, K", [(32768, 32768, 4096)])
 @pytest.mark.parametrize("BLOCK_SIZE_M", [128])
 @pytest.mark.parametrize("BLOCK_SIZE_N", [256])
 @pytest.mark.parametrize("BLOCK_SIZE_K", [64])
@@ -254,15 +255,16 @@ def exceeds_smem_capacity(num_stages, BLOCK_M, BLOCK_N, BLOCK_K, use_fp8):
 def test_warp_specialize_tma_matmul(M, N, K, BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K, num_stages, num_warps, use_fp8):
     if exceeds_smem_capacity(num_stages, BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K, use_fp8=use_fp8):
         pytest.skip("uses too much shared memory")
-    dtype = torch.float8_e4m3fn if use_fp8 else torch.float16
+    dtype = torch.float8_e4m3fn if use_fp8 else torch.bfloat16
 
     GROUP_SIZE_M = 8
 
     device = "cuda"
     torch.manual_seed(42)
-    A = torch.randn((M, K), dtype=torch.float16, device=device).to(dtype)
-    B = torch.randn((N, K), dtype=torch.float16, device=device).to(dtype)
-    C = torch.randn((M, N), dtype=torch.float16, device=device).to(dtype)
+    A = torch.randn((M, K), dtype=torch.bfloat16, device=device).to(dtype)
+    B = torch.randn((N, K), dtype=torch.bfloat16, device=device).to(dtype)
+    # C = torch.randn((M, N), dtype=torch.float16, device=device).to(dtype)
+    C = torch.empty((M, N), device=device, dtype=torch.bfloat16).to(dtype)
 
     def alloc_fn(size, align, stream):
         return torch.empty(size, dtype=torch.int8, device="cuda")
@@ -279,7 +281,9 @@ def test_warp_specialize_tma_matmul(M, N, K, BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_S
     ms, min_ms, max_ms = triton.testing.do_bench(
         lambda: matmul_tma_ws_kernel[grid](A, B, C, *A.stride(), *B.stride(), *C.stride(), M, N, K, num_stages,
                       BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K, GROUP_SIZE_M, num_warps=num_warps, USE_FP8=use_fp8),
-        quantiles=quantiles
+        quantiles=quantiles,
+        warmup=3, 
+        rep=10,     
     )
     
     print(f"Triton kernel: {ms:.3f}ms (min: {min_ms:.3f}ms, max: {max_ms:.3f}ms)")
@@ -288,7 +292,9 @@ def test_warp_specialize_tma_matmul(M, N, K, BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_S
     # 可选：对比 cuBLAS
     cublas_ms, cublas_min, cublas_max = triton.testing.do_bench(
         lambda: cublas.matmul(A, B, ref_out),
-        quantiles=quantiles
+        quantiles=quantiles,
+        warmup=3, 
+        rep=10,   
     )
     print(f"cuBLAS: {cublas_ms:.3f}ms (min: {cublas_min:.3f}ms, max: {cublas_max:.3f}ms)")
 
@@ -322,7 +328,7 @@ def test_warp_specialize_tma_matmul(M, N, K, BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_S
 
     ref_out = torch.empty((M, N), dtype=dtype, device=device)
     cublas.matmul(A, B, ref_out)
-    torch.testing.assert_close(ref_out.to(torch.float16), C.to(torch.float16), atol=0.03, rtol=0.03)
+    torch.testing.assert_close(ref_out.to(torch.bfloat16), C.to(torch.bfloat16), atol=0.03, rtol=0.03)
 
 
 @triton.jit

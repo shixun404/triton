@@ -131,8 +131,8 @@ def bench(A, Bnk, C, cfg: Cfg, iters: int, warmup: int):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--iters", type=int, default=20)
-    ap.add_argument("--warmup", type=int, default=5)
+    ap.add_argument("--iters", type=int, default=10)
+    ap.add_argument("--warmup", type=int, default=3)
     ap.add_argument("--check", action="store_true")
     args = ap.parse_args()
 
@@ -146,42 +146,55 @@ def main():
     triton.set_allocator(alloc_fn)
 
 
-    M, N, K = 32768, 4096, 32768
+    m, k, n = 2048, 256, 2048
+
     dtype = torch.bfloat16
     device = "cuda"
+    csv_lines = []
+    csv_lines.append("M,N,K,BM,BN,BK,GROUP_M,WARPS,STAGES,WS,ms,TFLOPs")
+    print("M,N,K,BM,BN,BK,GROUP_M,WARPS,STAGES,WS,ms,TFLOPs")
+    for i in [1, 2, 4, 8, 16]:
+        M = i * m
+        N = i * n
+        K = i * k
+        # B is [N, K] (so b.T is [K, N])
+        A = torch.randn((M, K), device=device, dtype=dtype)
+        Bnk = torch.randn((N, K), device=device, dtype=dtype)
+        C = torch.empty((M, N), device=device, dtype=dtype)
 
-    # B is [N, K] (so b.T is [K, N])
-    A = torch.randn((M, K), device=device, dtype=dtype)
-    Bnk = torch.randn((N, K), device=device, dtype=dtype)
-    C = torch.empty((M, N), device=device, dtype=dtype)
+        configs = [
+            Cfg(256, 128, 64, group_m=8, warps=4, stages=3, WS=True),
+            # Cfg(128, 256, 64, group_m=8, warps=4, stages=3, WS=False),
+            # Cfg(256, 128, 64, group_m=8, warps=8, stages=4),
+            # Cfg(128, 128, 64, group_m=8, warps=8, stages=4),
+            # Cfg(128, 256, 64, group_m=8, warps=4, stages=3),
+            # Cfg(256, 128, 64, group_m=8, warps=4, stages=3),
+        ]
 
-    configs = [
-        Cfg(128, 256, 64, group_m=8, warps=4, stages=3, WS=True),
-        # Cfg(128, 256, 64, group_m=8, warps=4, stages=3, WS=False),
-        # Cfg(256, 128, 64, group_m=8, warps=8, stages=4),
-        # Cfg(128, 128, 64, group_m=8, warps=8, stages=4),
-        # Cfg(128, 256, 64, group_m=8, warps=4, stages=3),
-        # Cfg(256, 128, 64, group_m=8, warps=4, stages=3),
-    ]
+        if args.check:
+            ref = (A @ Bnk.T).to(dtype)
+            cfg0 = configs[0]
+            run_kernel(A, Bnk, C, cfg0)
+            torch.cuda.synchronize()
+            # bf16 tolerance (adjust if needed)
+            max_abs = (C - ref).abs().max().item()
+            print(f"[check] max_abs_error = {max_abs}")
 
-    if args.check:
-        ref = (A @ Bnk.T).to(dtype)
-        cfg0 = configs[0]
-        run_kernel(A, Bnk, C, cfg0)
-        torch.cuda.synchronize()
-        # bf16 tolerance (adjust if needed)
-        max_abs = (C - ref).abs().max().item()
-        print(f"[check] max_abs_error = {max_abs}")
+       
+        for cfg in configs:
+            try:
+                ms, tflops = bench(A, Bnk, C, cfg, iters=args.iters, warmup=args.warmup)
+                csv_lines.append(f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},{cfg.WS}, {ms:.6f},{tflops:.2f}")
+                print(f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},{cfg.WS}, {ms:.6f},{tflops:.2f}")
+            except Exception as e:
+                # Skip all errors (e.g., OutOfResources)
+                print(f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},NaN,NaN  # {type(e).__name__}: {e}")
+        import time
+        time.sleep(2)
 
-    print("BM,BN,BK,GROUP_M,WARPS,STAGES,WS,ms,TFLOPs")
-    for cfg in configs:
-        try:
-            ms, tflops = bench(A, Bnk, C, cfg, iters=args.iters, warmup=args.warmup)
-            print(f"{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},{cfg.WS}, {ms:.6f},{tflops:.2f}")
-        except Exception as e:
-            # Skip all errors (e.g., OutOfResources)
-            print(f"{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},NaN,NaN  # {type(e).__name__}: {e}")
-
+    csv_output = "\n".join(csv_lines)
+    with open("/home/tiger/Triton-distributed/result/triton_dist_3.6_WS=1.csv", "w") as f:
+        f.write(csv_output)
 
 if __name__ == "__main__":
     main()
