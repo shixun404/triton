@@ -232,9 +232,9 @@ def compute_partition(barriers, buffers, ynumel, YBLOCK: gl.constexpr, layout: g
 
 
 @gluon.jit
-def elementwise_add_warp_specialized_kernel(  #
+def gemm_warp_specialized_kernel(  #
         a_desc, b_desc, c_desc,  #
-        xnumel, ynumel, XBLOCK: gl.constexpr, YBLOCK: gl.constexpr,  #
+        M, N, K, BLOCK_M: gl.constexpr, BLOCK_N: gl.constexpr, BLOCK_K: gl.constexpr,  #
         num_load_buffers: gl.constexpr, num_store_buffers: gl.constexpr, num_warps: gl.constexpr):
     # Pick a layout that makes it easy to avoid bank conflicts.
     layout: gl.constexpr = gl.BlockedLayout([1, 1], [1, 32], [1, num_warps], [1, 0])
@@ -258,10 +258,10 @@ def elementwise_add_warp_specialized_kernel(  #
     descs = (a_desc, b_desc, c_desc)
     barriers = (load_empty_bars, load_ready_bars, c_empty_bars, c_ready_bars)
     buffers = (a_bufs, b_bufs, c_bufs)
-    numel = (xnumel, ynumel)
+    # numel = (xnumel, ynumel)
 
-    pid = gl.program_id(0)
-    xoff = pid * XBLOCK
+    # pid = gl.program_id(0)
+    # xoff = pid * XBLOCK
 
     # `gl.warp_specialize` declares a warp-specialized section of the kernel.
     # It accepts arguments for the default partition function, which can include
@@ -276,14 +276,14 @@ def elementwise_add_warp_specialized_kernel(  #
     # warps to reduce the amount of registers allocated. The default partition
     # receives whatever registers are left over, based on `maxnreg` passed to
     # the kernel.
-    gl.warp_specialize([
-        (compute_partition, (barriers, buffers, ynumel, YBLOCK, layout)),
-        (load_partition, (descs, barriers, buffers, xoff, numel, YBLOCK)),
-        (store_partition, (descs, barriers, buffers, xoff, numel, YBLOCK)),
-    ], [1, 1], [24, 24])
+    # gl.warp_specialize([
+    #     (compute_partition, (barriers, buffers, ynumel, YBLOCK, layout)),
+    #     (load_partition, (descs, barriers, buffers, xoff, numel, YBLOCK)),
+    #     (store_partition, (descs, barriers, buffers, xoff, numel, YBLOCK)),
+    # ], [1, 1], [24, 24])
 
 
-def elementwise_add_warp_specialized(a, b, c, BLOCK_M=128, BLOCK_N=128, BLOCK_K=64, #
+def gemm_warp_specialized(a, b, c, BLOCK_M=128, BLOCK_N=128, BLOCK_K=64, #
                                      num_load_buffers=2, num_store_buffers=2, num_warps=4):
     M, K = a.shape
     K, N = b.shape
@@ -307,7 +307,7 @@ def elementwise_add_warp_specialized(a, b, c, BLOCK_M=128, BLOCK_N=128, BLOCK_K=
     #     maxnreg * (num_warps+4) * 32
     #
     # Keep this in mind when deciding how much occupancy you want.
-    elementwise_add_warp_specialized_kernel[grid](  #
+    gemm_warp_specialized_kernel[grid](  #
         a_desc, b_desc, c_desc, M, N, K,  #
         BLOCK_M, BLOCK_N, BLOCK_K, num_load_buffers, num_store_buffers,  #
         num_warps=num_warps, maxnreg=128)
@@ -318,17 +318,17 @@ def elementwise_add_warp_specialized(a, b, c, BLOCK_M=128, BLOCK_N=128, BLOCK_K=
 @pytest.mark.parametrize("num_load_buffers, num_store_buffers", [(1, 1), (2, 2)])
 @pytest.mark.parametrize("num_warps", [4, 8])
 @pytest.mark.skipif(not is_hopper_or_newer(), reason="Requires Hopper or newer")
-def test_elementwise_add_warp_specialized(M, N, K, BLOCK_M, BLOCK_N, BLOCK_K, num_load_buffers, num_store_buffers,
+def test_gemm_warp_specialized(M, N, K, BLOCK_M, BLOCK_N, BLOCK_K, num_load_buffers, num_store_buffers,
                                           num_warps):
     a = torch.randn(M, K, device="cuda")
     b = torch.randn(K, N, device="cuda")
     c = torch.zeros(M, N, device="cuda")
-    elementwise_add_warp_specialized(a, b, c, BLOCK_M, BLOCK_N, BLOCK_K, num_load_buffers, num_store_buffers, num_warps)
+    gemm_warp_specialized(a, b, c, BLOCK_M, BLOCK_N, BLOCK_K, num_load_buffers, num_store_buffers, num_warps)
     torch.testing.assert_close(a + b, c, atol=0, rtol=0)
 
 
 if __name__ == "__main__":
-    print("Benchmarking elementwise_add")
+    print("Benchmarking gemm")
     print("============================")
     M, N, K = 32 * 1024, 32 * 1024, 4096
     A = torch.randn(M, K, device="cuda", dtype=torch.float16)
@@ -343,7 +343,7 @@ if __name__ == "__main__":
     ms = triton.testing.do_bench(lambda: cublas.matmul(A, BT, C))
     print(f"cublas GEMM: {t7.get_flops(ms, M, N, K):.2f} TFLOPS/s")
 
-    ms = triton.testing.do_bench(lambda: elementwise_add_warp_specialized(  #
+    ms = triton.testing.do_bench(lambda: gemm_warp_specialized(  #
         A, B, C, BLOCK_M, BLOCK_N, BLOCK_K, num_load_buffers, num_store_buffers, num_warps))
     print(f"Gluon GEMM: {t7.get_flops(ms, M, N, K):.2f} TFLOPS/s")
     # print()
