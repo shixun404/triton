@@ -33,19 +33,19 @@ def matmul_kernel_tma(
         strides=[stride_bn, stride_bk],
         block_shape=[BLOCK_SIZE_N, BLOCK_SIZE_K],
     )
-    # c_desc = tl.make_tensor_descriptor(
-    #     c_ptr,
-    #     shape=[M, N],
-    #     strides=[stride_cm, stride_cn],
-    #     block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_N],
-    # )
-
     c_desc = tl.make_tensor_descriptor(
         c_ptr,
         shape=[M, N],
         strides=[stride_cm, stride_cn],
-        block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_N // 2],
+        block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_N],
     )
+
+    # c_desc = tl.make_tensor_descriptor(
+    #     c_ptr,
+    #     shape=[M, N],
+    #     strides=[stride_cm, stride_cn],
+    #     block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_N // 2],
+    # )
 
     pid = tl.program_id(axis=0)
     num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
@@ -76,16 +76,16 @@ def matmul_kernel_tma(
         b = b_desc.load([offs_bn, offs_k])   # [BN, BK]
         acc = tl.dot(a, b.T, acc)            # [BM,BK] x [BK,BN] -> [BM,BN]
 
-    acc = tl.reshape(acc, (BLOCK_SIZE_M, 2, BLOCK_SIZE_N // 2))
-    acc = tl.permute(acc, (0, 2, 1))
-    acc0, acc1 = tl.split(acc)
-    c0 = acc0.to(tl.bfloat16)
-    c_desc.store([offs_am, offs_bn], c0)
-    c1 = acc1.to(tl.bfloat16)
-    c_desc.store([offs_am, offs_bn + BLOCK_SIZE_N // 2], c1)
+    # acc = tl.reshape(acc, (BLOCK_SIZE_M, 2, BLOCK_SIZE_N // 2))
+    # acc = tl.permute(acc, (0, 2, 1))
+    # acc0, acc1 = tl.split(acc)
+    # c0 = acc0.to(tl.bfloat16)
+    # c_desc.store([offs_am, offs_bn], c0)
+    # c1 = acc1.to(tl.bfloat16)
+    # c_desc.store([offs_am, offs_bn + BLOCK_SIZE_N // 2], c1)
 
-    # c = acc.to(tl.bfloat16)
-    # c_desc.store([offs_am, offs_bn], c)
+    c = acc.to(tl.bfloat16)
+    c_desc.store([offs_am, offs_bn], c)
 
 
     # c0 = acc[:, 0:BLOCK_SIZE_N // 2].to(tl.bfloat16)
