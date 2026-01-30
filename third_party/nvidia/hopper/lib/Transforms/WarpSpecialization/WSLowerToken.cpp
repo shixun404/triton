@@ -39,11 +39,10 @@ Value getMBarrierPhaseBit(OpBuilder &builder, Operation *op,
     curPhase = acq.getPhase();
   else if (auto wait = dyn_cast<ttnvws::ConsumerWaitOp>(op))
     curPhase = wait.getPhase();
-  if (emptyBarrier) {
-    // curPhase = curPhase xor True for emptyBarrier.
-    Value _1_1b = arith::ConstantIntOp::create(builder, loc, 1, 1);
-    curPhase = mlir::arith::XOrIOp::create(builder, loc, curPhase, _1_1b);
-  }
+  // Goal-A multi-CTA support: keep barrier phase semantics aligned with the
+  // non-warp-specialize pipeline. Do not invert the phase bit for the "empty"
+  // barrier; the phase value already encodes the expected parity.
+  (void)emptyBarrier;
   LLVM_DEBUG(curPhase.dump());
   return curPhase;
 }
@@ -147,12 +146,6 @@ void lowerTokenOperations(Operation *parentOp, int numCTAs,
           builder, loc, singleBarrierMemDescType, bufferEmptyArray, idx);
       ttng::InitBarrierOp::create(builder, loc, barrierEmptyView,
                                   bufferEmptyCount);
-      // Prime the empty barrier so that the producer can acquire immediately at
-      // the beginning of the pipeline. Without this, the producer's initial
-      // wait on the empty barrier parity can spin forever (no consumer has
-      // released yet).
-      ttng::ArriveBarrierOp::create(builder, loc, barrierEmptyView,
-                                   bufferEmptyCount);
     }
 
     // CTA-local sync: ensure barrier initialization is visible within the CTA.
