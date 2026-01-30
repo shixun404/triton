@@ -196,10 +196,10 @@ def bench(A, Bkn, C, cfg: Cfg, iters: int, warmup: int):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--iters", type=int, default=3)
-    ap.add_argument("--warmup", type=int, default=1)
+    ap.add_argument("--iters", type=int, default=5)
+    ap.add_argument("--warmup", type=int, default=2)
     ap.add_argument("--group_m", type=int, default=8)
-    ap.add_argument("--interval", type=int, default=10)
+    ap.add_argument("--interval", type=int, default=5)
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--save", action="store_true")
     args = ap.parse_args()
@@ -218,7 +218,8 @@ def main():
 
 
     # m, k, n = 2048, 2048, 256
-    m, k, n = 2048, 256, 2048
+    m, k, n = 256, 2048, 2048
+    # m, k, n = 2048, 256, 2048
 
     dtype = torch.bfloat16
     device = "cuda"
@@ -265,33 +266,40 @@ def main():
     # configs = [Cfg(256, 256, 64, group_m=8, warps=8, stages=4, num_ctas=2, WS=False)]
     # configs = [Cfg(128, 256, 64, group_m=8, warps=4, stages=3, num_ctas=1, WS=True)]
     # configs = [Cfg(128, 256, 64, group_m=8, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=True)]
-    configs = [
+    configs =  [  
+                Cfg(128, 256, 64, group_m=8, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=False, SUBTILE=False),
+                Cfg(256, 256, 64, group_m=8, warps=8, stages=3, num_ctas=2, WS=False, FLATTEN=False, SUBTILE=False),
+                Cfg(256, 256, 64, group_m=8, warps=8, stages=3, num_ctas=2, WS=False, FLATTEN=True, SUBTILE=False),
+                Cfg(128, 256, 64, group_m=4, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=False, SUBTILE=False),
+                ]
+
+    # configs = [
         
 
-        Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=False, SUBTILE=False),
-        # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=False, SUBTILE=True),
-        # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=1, WS=False, FLATTEN=False, SUBTILE=True),
-        # # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=1, WS=False, FLATTEN=False, SUBTILE=False),
-        Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=True, SUBTILE=False),
-        # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=True, SUBTILE=True),
-        # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=1, WS=False, FLATTEN=True, SUBTILE=True),
-        # Cfg(256, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=2, WS=False, FLATTEN=True, SUBTILE=False),
-        # # Cfg(256, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=2, WS=False, FLATTEN=True, SUBTILE=True), # compilation failed 
-        # # Cfg(256, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=2, WS=False, FLATTEN=True, SUBTILE=False), # shared memory 
-        # # Cfg(256, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=2, WS=False, FLATTEN=True, SUBTILE=True), # compilation failed 
+    #     Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=False, SUBTILE=False),
+    #     # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=False, SUBTILE=True),
+    #     # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=1, WS=False, FLATTEN=False, SUBTILE=True),
+    #     # # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=1, WS=False, FLATTEN=False, SUBTILE=False),
+    #     Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=True, SUBTILE=False),
+    #     # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=True, SUBTILE=True),
+    #     # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=1, WS=False, FLATTEN=True, SUBTILE=True),
+    #     # Cfg(256, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=2, WS=False, FLATTEN=True, SUBTILE=False),
+    #     # # Cfg(256, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=2, WS=False, FLATTEN=True, SUBTILE=True), # compilation failed 
+    #     # # Cfg(256, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=2, WS=False, FLATTEN=True, SUBTILE=False), # shared memory 
+    #     # # Cfg(256, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=2, WS=False, FLATTEN=True, SUBTILE=True), # compilation failed 
         
         
      
-        # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=False),
-        # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=False, SUBTILE=True),
-        Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=False),
-        Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=False, SUBTILE=True),
-        Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=1, WS=True, FLATTEN=False, SUBTILE=True),
-        Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=True),
-        Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=True, SUBTILE=True),
+    #     # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=False),
+    #     # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=False, SUBTILE=True),
+    #     Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=False),
+    #     Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=False, SUBTILE=True),
+    #     Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=1, WS=True, FLATTEN=False, SUBTILE=True),
+    #     Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=True),
+    #     Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=True, SUBTILE=True),
      
-        # Cfg(128, 256, 64, group_m=8, warps=8, stages=4, num_ctas=1, WS=False, FLATTEN=True),
-        ]
+    #     # Cfg(128, 256, 64, group_m=8, warps=8, stages=4, num_ctas=1, WS=False, FLATTEN=True),
+    #     ]
 
     # configs = configs + list(reversed(configs))
 
