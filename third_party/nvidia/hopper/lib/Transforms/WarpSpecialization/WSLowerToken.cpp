@@ -149,7 +149,10 @@ void lowerTokenOperations(Operation *parentOp, int numCTAs,
                                   bufferEmptyCount);
     }
 
-    assert(numCTAs == 1 && "remote CTA is not supported yet");
+    // CTA-local sync: ensure barrier initialization is visible within the CTA.
+    // For goal-A multi-CTA support, tokens/barriers remain CTA-local (no remote
+    // CTA synchronization), and the CTA dimension is carried in the memdesc
+    // encoding similarly to the non-warp-specialize pipeline.
     mlir::gpu::BarrierOp::create(builder, loc);
 
     // Helper function for extracting one index from bufferFullArray.
@@ -291,7 +294,8 @@ void lowerTokenOperations(Operation *parentOp, int numCTAs,
     op->erase();
   }
 
-  assert(numCTAs == 1 && "remote CTA is not supported yet");
+  // Goal-A multi-CTA support: allow numCTAs > 1 as long as token/barrier
+  // synchronization stays CTA-local.
   LLVM_DEBUG({
     LDBG("after lowering");
     parentOp->dump();
