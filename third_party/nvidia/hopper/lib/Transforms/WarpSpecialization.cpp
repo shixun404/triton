@@ -57,6 +57,12 @@ public:
     unsigned numWarpGroups = 3;
     // FIXME: skip data partitioning with on-host TMA.
     bool success = false;
+    if (dumpIntermediateSteps) {
+      llvm::dbgs()
+          << "// ===== WarpSpec Input IR (Before Any Partition) =====\n"
+          << moduleOp << "\n\n\n";
+    }
+    // export MLIR_ENABLE_DUMP=1
     for (; numWarpGroups >= 2; numWarpGroups--) {
       // Partition key ops into multiple async tasks.
       doTaskPartition(funcOp, numWarpGroups);
