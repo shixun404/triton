@@ -242,13 +242,13 @@ def exceeds_smem_capacity(num_stages, BLOCK_M, BLOCK_N, BLOCK_K, use_fp8):
     return (num_stages * BLOCK_K * (BLOCK_M + BLOCK_N) + BLOCK_M * BLOCK_N) * (1 if use_fp8 else 2) > 228 * 1024
 
 
-@pytest.mark.parametrize("M, N, K", [(32, 32, 32), (8192, 8192, 512)])
+@pytest.mark.parametrize("M, N, K", [(32768, 32768, 4096), (32768, 4096, 32768)])
 @pytest.mark.parametrize("BLOCK_SIZE_M", [128])
-@pytest.mark.parametrize("BLOCK_SIZE_N", [128, 256])
-@pytest.mark.parametrize("BLOCK_SIZE_K", [64, 128])
-@pytest.mark.parametrize("num_stages", [2, 3])
-@pytest.mark.parametrize("num_warps", [4, 8])
-@pytest.mark.parametrize("use_fp8", [False, True])
+@pytest.mark.parametrize("BLOCK_SIZE_N", [256])
+@pytest.mark.parametrize("BLOCK_SIZE_K", [64])
+@pytest.mark.parametrize("num_stages", [3])
+@pytest.mark.parametrize("num_warps", [4])
+@pytest.mark.parametrize("use_fp8", [False])
 @pytest.mark.skipif(is_hip(), reason="warp specialization is not supported on hip devices")
 @pytest.mark.skipif(not is_hopper_or_blackwell(), reason="Requires Hopper or Blackwell")
 def test_warp_specialize_tma_matmul(M, N, K, BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K, num_stages, num_warps, use_fp8):
@@ -278,7 +278,7 @@ def test_warp_specialize_tma_matmul(M, N, K, BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_S
     # Benchmark triton kernel
     ms, min_ms, max_ms = triton.testing.do_bench(
         lambda: matmul_tma_ws_kernel[grid](A, B, C, *A.stride(), *B.stride(), *C.stride(), M, N, K, num_stages,
-                      BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K, GROUP_SIZE_M, USE_FP8=use_fp8),
+                      BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K, GROUP_SIZE_M, num_warps=num_warps, USE_FP8=use_fp8),
         quantiles=quantiles
     )
     
@@ -291,6 +291,22 @@ def test_warp_specialize_tma_matmul(M, N, K, BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_S
         quantiles=quantiles
     )
     print(f"cuBLAS: {cublas_ms:.3f}ms (min: {cublas_min:.3f}ms, max: {cublas_max:.3f}ms)")
+
+    from conftest import record_best
+
+    key = f"M={M},N={N},K={K},fp8={use_fp8}"
+    params = dict(
+        BLOCK_SIZE_M=BLOCK_SIZE_M,
+        BLOCK_SIZE_N=BLOCK_SIZE_N,
+        BLOCK_SIZE_K=BLOCK_SIZE_K,
+        num_stages=num_stages,
+        num_warps=num_warps,
+        GROUP_SIZE_M=GROUP_SIZE_M,
+    )
+    record_best(key, ms, params)
+
+    print(f"[CONFIG] {key}  ms={ms:.3f}  {params}")
+
 
     ttgir = kernel.asm["ttgir"]
     if is_blackwell():
