@@ -21,6 +21,7 @@ def matmul_kernel_tma(
     num_stages: tl.constexpr,
     WS: tl.constexpr,
     FLATTEN: tl.constexpr,
+    SUBTILE: tl.constexpr,
 ):
     # Descriptors
     a_desc = tl.make_tensor_descriptor(
@@ -39,7 +40,7 @@ def matmul_kernel_tma(
         c_ptr,
         shape=[M, N],
         strides=[stride_cm, stride_cn],
-        block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_N],
+        block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_N // 2 if SUBTILE else BLOCK_SIZE_N],
     )
 
 
@@ -75,9 +76,17 @@ def matmul_kernel_tma(
             b = b_desc.load([offs_k, offs_bn])   # [BN, BK]
             acc = tl.dot(a, b, acc)            # [BM,BK] x [BK,BN] -> [BM,BN]
 
-        c = acc.to(tl.bfloat16)
-        c_desc.store([offs_am, offs_bn], c)
-
+        if SUBTILE:
+            acc = tl.reshape(acc, (BLOCK_SIZE_M, 2, BLOCK_SIZE_N // 2))
+            acc = tl.permute(acc, (0, 2, 1))
+            acc0, acc1 = tl.split(acc)
+            c0 = acc0.to(tl.bfloat16)
+            c_desc.store([offs_am, offs_bn], c0)
+            c1 = acc1.to(tl.bfloat16)
+            c_desc.store([offs_am, offs_bn + BLOCK_SIZE_N // 2], c1)
+        else:
+            c = acc.to(tl.bfloat16)
+            c_desc.store([offs_am, offs_bn], c)
 
 
     # c_desc = tl.make_tensor_descriptor(
@@ -133,6 +142,7 @@ class Cfg:
     num_ctas: int = 1   
     WS: bool = False
     FLATTEN: bool = False
+    SUBTILE: bool = False
 
 
 def run_kernel(A, Bkn, C, cfg: Cfg):
@@ -157,6 +167,7 @@ def run_kernel(A, Bkn, C, cfg: Cfg):
         num_ctas=cfg.num_ctas,   # launch option (ONLY ONCE)
         WS=cfg.WS,
         FLATTEN=cfg.FLATTEN,
+        SUBTILE=cfg.SUBTILE,
     )
 
 def bench(A, Bkn, C, cfg: Cfg, iters: int, warmup: int):
@@ -186,6 +197,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--iters", type=int, default=3)
     ap.add_argument("--warmup", type=int, default=1)
+    ap.add_argument("--group_m", type=int, default=8)
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--save", action="store_true")
     args = ap.parse_args()
@@ -203,14 +215,32 @@ def main():
     triton.set_allocator(alloc_fn)
 
 
-    m, k, n = 2048, 2048, 256
-    # m, k, n = 2048, 256, 2048
+    # m, k, n = 2048, 2048, 256
+    m, k, n = 2048, 256, 2048
 
     dtype = torch.bfloat16
     device = "cuda"
     csv_lines = []
     csv_lines.append("M,N,K,BM,BN,BK,GROUP_M,WARPS,STAGES,CTAS,WS,flatten,itrs,wmp,ms,TFLOPs")
-    print("M,N,K,BM,BN,BK,GROUP_M,WARPS,STAGES,CTAS,WS,flatten,itrs,wmp,ms,TFLOPs")
+    # print("M,N,K,BM,BN,BK,GROUP_M,WARPS,STAGES,CTAS,WS,flatten,itrs,wmp,ms,TFLOPs")
+    header1 = (
+        f"{'Problem Size':^20} | "
+        f"{'Tile Shape':^22} | "
+        f"{'Execution':^34} | "
+        f"{'Result':^18}"
+    )
+
+    header2 = (
+        f"{'M':>6} {'N':>6} {'K':>6} | "
+        f"{'BM':>4} {'BN':>4} {'BK':>4} {'GROUP_M':>7} | "
+        f"{'WARPS':>5} {'STAGES':>6} {'CTAS':>4} {'WS':>3} {'FLAT':>4} {'SUBTILE':>4} | "
+        f"{'iters':>5} {'warmup':>7} {'ms':>9} {'TFLOPs':>8}"
+    )
+
+    print(header1)
+    print(header2)
+    # print("-" * len(header1))
+    print("-" * len(header2))
     configs = []
 
     for BLOCK_M in [256, 128]:
@@ -235,12 +265,27 @@ def main():
     # configs = [Cfg(128, 256, 64, group_m=8, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=True)]
     configs = [
 
-        Cfg(128, 256, 64, group_m=8, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=False),
-        Cfg(128, 256, 64, group_m=8, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=True),
-        Cfg(256, 256, 64, group_m=8, warps=8, stages=3, num_ctas=2, WS=False, FLATTEN=True),
-        # Cfg(128, 256, 64, group_m=8, warps=4, stages=3, num_ctas=1, WS=True, FLATTEN=True),
+        Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=False, SUBTILE=False),
+        # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=False, SUBTILE=True),
+        # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=1, WS=False, FLATTEN=False, SUBTILE=True),
+        # # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=1, WS=False, FLATTEN=False, SUBTILE=False),
+        Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=True, SUBTILE=False),
+        # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=False, FLATTEN=True, SUBTILE=True),
+        # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=1, WS=False, FLATTEN=True, SUBTILE=True),
+        # Cfg(256, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=2, WS=False, FLATTEN=True, SUBTILE=False),
+        # # Cfg(256, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=2, WS=False, FLATTEN=True, SUBTILE=True), # compilation failed 
+        # # Cfg(256, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=2, WS=False, FLATTEN=True, SUBTILE=False), # shared memory 
+        # # Cfg(256, 256, 64, group_m=args.group_m, warps=8, stages=4, num_ctas=2, WS=False, FLATTEN=True, SUBTILE=True), # compilation failed 
+        
+        
+     
+        # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=False),
+        # Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=False, SUBTILE=True),
+        Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=True),
+        Cfg(128, 256, 64, group_m=args.group_m, warps=8, stages=3, num_ctas=1, WS=True, FLATTEN=True, SUBTILE=True),
+     
         # Cfg(128, 256, 64, group_m=8, warps=8, stages=4, num_ctas=1, WS=False, FLATTEN=True),
-               ]
+        ]
 
     # for id in range(len(iter_list)): 
     for id in [4]: 
@@ -284,15 +329,25 @@ def main():
 
         
 
-       
+        # seed += 1
         for cfg in configs:
+            A = torch.randn((M, K), device=device, dtype=dtype) * 0.1
+            Bnk = torch.randn((N, K), device=device, dtype=dtype) * 0.1
+            Bkn = Bnk.T.contiguous() 
             current_cfg = f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},{cfg.num_ctas},{cfg.WS},{cfg.FLATTEN},{args.iters},{args.warmup},"
             try:
                 ms, tflops = bench(A, Bkn, C, cfg, iters=args.iters, warmup=args.warmup)
                 # ms, tflops = bench(A, Bnk, C, cfg, iters=args.iters, warmup=args.warmup)
                 current_cfg += f"{ms:.6f},{tflops:.2f}"
                 csv_lines.append(current_cfg)
-                print(current_cfg)
+                line = (
+                    f"{M:6d} {N:6d} {K:6d} | "
+                    f"{cfg.bm:4d} {cfg.bn:4d} {cfg.bk:4d} {cfg.group_m:7d} | "
+                    f"{cfg.warps:5d} {cfg.stages:6d} {cfg.num_ctas:4d} "
+                    f"{int(cfg.WS):3d} {int(cfg.FLATTEN):4d}  {int(cfg.SUBTILE):6d} | "
+                    f"{args.iters:5d} {args.warmup:7d} {ms:9.4f} {tflops:8.2f}"
+                )
+                print(line)
             except Exception as e:
                 # Skip all errors (e.g., OutOfResources)
                 current_cfg += f"NaN,NaN"
@@ -305,7 +360,7 @@ def main():
                     f.write(csv_output)
             torch.cuda.synchronize()
             import time
-            time.sleep(1)
+            time.sleep(20)
             torch.cuda.synchronize()
     if args.save:
         csv_output = "\n".join(csv_lines)
