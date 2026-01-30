@@ -193,9 +193,30 @@ def main():
     dtype = torch.bfloat16
     device = "cuda"
     csv_lines = []
-    csv_lines.append("M,N,K,BM,BN,BK,GROUP_M,WARPS,STAGES,WS,ms,TFLOPs")
-    print("M,N,K,BM,BN,BK,GROUP_M,WARPS,STAGES,WS,ms,TFLOPs")
-    for i in [16]:
+    csv_lines.append("M,N,K,BM,BN,BK,GROUP_M,WARPS,STAGES,CTAS,WS,ms,TFLOPs")
+    print("M,N,K,BM,BN,BK,GROUP_M,WARPS,STAGES,CTAS,WS,ms,TFLOPs")
+    configs = []
+
+    for BLOCK_M in [256, 128]:
+        for BLOCK_N in [256, 128]:
+            for BLOCK_K in [64]:
+                for group_m in [1, 2, 4, 8]:
+                        for stages in [3, 4, 5]:
+                            configs.append(
+                                Cfg(BLOCK_M, BLOCK_N, BLOCK_K, group_m, warps=8, stages=stages, num_ctas=2, WS=False)
+                            )
+                            # if BLOCK_M == 256 and BLOCK_N == 256:    
+                            #     continue
+                            configs.append(
+                                Cfg(BLOCK_M, BLOCK_N, BLOCK_K, group_m, warps=8, stages=stages, num_ctas=1, WS=False)
+                            )
+                            configs.append(
+                                Cfg(BLOCK_M, BLOCK_N, BLOCK_K, group_m, warps=4, stages=stages, num_ctas=1, WS=True)
+                            )
+    
+       
+    for i in [1, 2, 4, 8, 16]:
+        args.iter = max(100 // i, 5) 
         M = i * m
         N = i * n
         K = i * k
@@ -205,18 +226,7 @@ def main():
         Bkn = Bnk.T.contiguous() 
         C = torch.empty((M, N), device=device, dtype=dtype)
 
-        configs = [
-            # Cfg(256, 256, 64, group_m=8, warps=8, stages=4, num_ctas=2, WS=False),
-            # Cfg(256, 128, 64, group_m=8, warps=8, stages=4, num_ctas=1, WS=False),
-            
-            Cfg(128, 256, 64, group_m=8, warps=4, stages=3, num_ctas=1, WS=True),
-            # Cfg(128, 256, 64, group_m=8, warps=4, stages=3, WS=False),
-            # Cfg(256, 128, 64, group_m=8, warps=8, stages=4),
-            # Cfg(128, 128, 64, group_m=8, warps=8, stages=4),
-            # Cfg(128, 256, 64, group_m=8, warps=4, stages=3),
-            # Cfg(256, 128, 64, group_m=8, warps=4, stages=3),
-        ]
-
+        
         if args.check:
             ref = (A @ Bkn)
 
@@ -250,17 +260,23 @@ def main():
             try:
                 ms, tflops = bench(A, Bkn, C, cfg, iters=args.iters, warmup=args.warmup)
                 # ms, tflops = bench(A, Bnk, C, cfg, iters=args.iters, warmup=args.warmup)
-                csv_lines.append(f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},{cfg.WS}, {ms:.6f},{tflops:.2f}")
-                print(f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},{cfg.WS}, {ms:.6f},{tflops:.2f}")
+                csv_lines.append(f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},{cfg.num_ctas},{cfg.WS},{ms:.6f},{tflops:.2f}")
+                print(f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},{cfg.num_ctas},{cfg.WS},{ms:.6f},{tflops:.2f}")
             except Exception as e:
                 # Skip all errors (e.g., OutOfResources)
-                print(f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},NaN,NaN  # {type(e).__name__}: {e}")
-        import time
-        time.sleep(2)
+                csv_lines.append(f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},{cfg.num_ctas},{cfg.WS},NaN,NaN")
+                print(f"{M},{N},{K},{cfg.bm},{cfg.bn},{cfg.bk},{cfg.group_m},{cfg.warps},{cfg.stages},{cfg.num_ctas},{cfg.WS},NaN,NaN  # {type(e).__name__}: {e}")
+            csv_output = "\n".join(csv_lines)
+            with open("/home/tiger/triton/result/triton_dist_3.6.csv", "w") as f:
+                f.write(csv_output)
+            torch.cuda.synchronize()
+            import time
+            time.sleep(0.5)
+            torch.cuda.synchronize()
 
-    # csv_output = "\n".join(csv_lines)
-    # with open("/home/tiger/Triton-distributed/result/triton_dist_3.6_WS=1.csv", "w") as f:
-    #     f.write(csv_output)
+    csv_output = "\n".join(csv_lines)
+    with open("/home/tiger/triton/result/triton_dist_3.6.csv", "w") as f:
+        f.write(csv_output)
 
 if __name__ == "__main__":
     main()

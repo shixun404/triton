@@ -70,13 +70,7 @@ struct InitBarrierOpConversion
     auto id = getThreadId(rewriter, loc);
     auto pred = b.icmp_eq(id, b.i32_val(0));
     ::mlir::triton::PTXBuilder ptxBuilder;
-    // If multiple CTAs are in the same cluster (numCTAs > 1), barriers must be
-    // initialized in cluster shared memory scope to correctly synchronize TMA
-    // multicast/broadcast pipelines across CTAs.
-    auto numCTAs = triton::gpu::lookupNumCTAs(rewriter);
-    const bool useClusterScope = numCTAs > 1;
-    const std::string scope = useClusterScope ? "cluster" : "cta";
-    const std::string ptx = "@$0 mbarrier.init.shared::" + scope + ".b64 [$1], " +
+    const std::string ptx = "@$0 mbarrier.init.shared::cta.b64 [$1], " +
                             std::to_string(op.getCount()) + ";";
     auto &barSyncOp = *ptxBuilder.create(ptx);
     barSyncOp({ptxBuilder.newOperand(pred, "b"),
@@ -106,11 +100,7 @@ struct InvalBarrierOpConversion
     auto id = getThreadId(rewriter, loc);
     Value pred = b.icmp_eq(id, b.i32_val(0));
     ::mlir::triton::PTXBuilder ptxBuilder;
-    auto numCTAs = triton::gpu::lookupNumCTAs(rewriter);
-    const bool useClusterScope = numCTAs > 1;
-    const std::string scope = useClusterScope ? "cluster" : "cta";
-    const std::string ptx =
-        "@$0 mbarrier.inval.shared::" + scope + ".b64 [$1];";
+    const std::string ptx = "@$0 mbarrier.inval.shared::cta.b64 [$1];";
     auto &barSyncOp = *ptxBuilder.create(ptx);
     barSyncOp({ptxBuilder.newOperand(pred, "b"),
                ptxBuilder.newOperand(smemObj.getBase(), "r")},
@@ -157,11 +147,9 @@ struct BarrierExpectConversion
     }
 
     ::mlir::triton::PTXBuilder ptxBuilder;
-    const bool useClusterScope = numCTAs > 1;
-    const std::string scope = useClusterScope ? "cluster" : "cta";
-    const std::string ptx = "@$0 mbarrier.arrive.expect_tx.shared::" + scope +
-                            ".b64 _, [$1], " +
-                            std::to_string(expectedBytes) + ";";
+    const std::string ptx =
+        "@$0 mbarrier.arrive.expect_tx.shared::cta.b64 _, [$1], " +
+        std::to_string(expectedBytes) + ";";
     auto &barSyncOp = *ptxBuilder.create(ptx);
     barSyncOp({ptxBuilder.newOperand(pred, "b"),
                ptxBuilder.newOperand(smemObj.getBase(), "r")},
@@ -193,9 +181,6 @@ struct WaitBarrierOpConversion
     bool predicated =
         adaptor.getPred() && !matchPattern(op.getPred(), m_NonZero());
     std::string ptx;
-    auto numCTAs = triton::gpu::lookupNumCTAs(rewriter);
-    const bool useClusterScope = numCTAs > 1;
-    const std::string scope = useClusterScope ? "cluster" : "cta";
     if (targetInfo->getComputeCapability() < 90) {
       if (!predicated) {
         ptx = R"(
@@ -222,25 +207,21 @@ struct WaitBarrierOpConversion
       }
     } else {
       if (!predicated) {
-        ptx = std::string(R"(
+        ptx = R"(
 {
 	.reg .pred complete;
 	waitLoop:
-	mbarrier.try_wait.parity.shared::)") +
-              scope +
-              R"(.b64 complete, [$0], $1;
+	mbarrier.try_wait.parity.shared::cta.b64 complete, [$0], $1;
 	@!complete bra.uni waitLoop;
 }
 )";
       } else {
-        ptx = std::string(R"(
+        ptx = R"(
 {
 	@!$2 bra.uni skipWait;
 	.reg .pred complete;
 	waitLoop:
-	mbarrier.try_wait.parity.shared::)") +
-              scope +
-              R"(.b64 complete, [$0], $1;
+	mbarrier.try_wait.parity.shared::cta.b64 complete, [$0], $1;
 	@!complete bra.uni waitLoop;
 	skipWait:
 }
@@ -272,10 +253,7 @@ struct ArriveBarrierOpConversion
                   ConversionPatternRewriter &rewriter) const override {
     // TODO: Add phase result as needed.
     std::stringstream ptxAsm;
-    auto numCTAs = triton::gpu::lookupNumCTAs(rewriter);
-    const bool useClusterScope = numCTAs > 1;
-    const std::string scope = useClusterScope ? "cluster" : "cta";
-    ptxAsm << "@$0 mbarrier.arrive.shared::" << scope << ".b64 _, [$1]";
+    ptxAsm << "@$0 mbarrier.arrive.shared::cta.b64 _, [$1]";
     if (op.getCount() > 1) {
       ptxAsm << ", " << op.getCount();
     }
