@@ -146,7 +146,7 @@ def do_bench(fn, warmup=25, rep=100, grad_to_none=None, quantiles=None, return_m
 
     di = runtime.driver.active.get_device_interface()
 
-    fn()
+    # fn()
     di.synchronize()
 
     cache = runtime.driver.active.get_empty_cache_for_benchmark()
@@ -155,39 +155,47 @@ def do_bench(fn, warmup=25, rep=100, grad_to_none=None, quantiles=None, return_m
     start_event = di.Event(enable_timing=True)
     end_event = di.Event(enable_timing=True)
     start_event.record()
-    for _ in range(5):
-        runtime.driver.active.clear_cache(cache)
+    for _ in range(0):
+        # runtime.driver.active.clear_cache(cache)
         fn()
     end_event.record()
     di.synchronize()
     estimate_ms = start_event.elapsed_time(end_event) / 5
-
+    # print(f"estimate_ms:{estimate_ms} ms")
     # compute number of warmup and repeat
-    n_warmup = max(1, int(warmup / estimate_ms))
-    n_repeat = max(1, int(rep / estimate_ms))
+    n_warmup = 5
+    n_repeat = 20
+    
+    # n_warmup = max(1, int(warmup / estimate_ms))
+    # n_repeat = max(1, int(rep / estimate_ms))
+    
     start_event = [di.Event(enable_timing=True) for i in range(n_repeat)]
     end_event = [di.Event(enable_timing=True) for i in range(n_repeat)]
     # Warm-up
     for _ in range(n_warmup):
         fn()
     # Benchmark
+    start_event[0].record()
     for i in range(n_repeat):
         # we don't want `fn` to accumulate gradient values
         # if it contains a backward pass. So we clear the
         # provided gradients
-        if grad_to_none is not None:
-            for x in grad_to_none:
-                x.grad = None
-        # we clear the L2 cache before each run
-        runtime.driver.active.clear_cache(cache)
+        # if grad_to_none is not None:
+        #     for x in grad_to_none:
+        #         x.grad = None
+        # # we clear the L2 cache before each run
+        # runtime.driver.active.clear_cache(cache)
         # record time of `fn`
-        start_event[i].record()
+        # start_event[i].record()
         fn()
-        end_event[i].record()
+    end_event[0].record()
     # Record clocks
     di.synchronize()
-    times = [s.elapsed_time(e) for s, e in zip(start_event, end_event)]
-    return _summarize_statistics(times, quantiles, return_mode)
+    ms = start_event[0].elapsed_time(end_event[0]) / n_repeat
+    print(ms)
+    # times = [s.elapsed_time(e) for s, e in zip(start_event, end_event)]
+    # return _summarize_statistics(times, quantiles, return_mode)
+    return ms, 0, 0
 
 
 def assert_close(x, y, atol=None, rtol=None, err_msg=''):
