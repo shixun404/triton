@@ -337,7 +337,8 @@ def main():
 
         ms, tflops = bench(A, Bkn, C, configs[0], iters=args.iters, warmup=args.warmup)
         import time
-        time.sleep(args.interval)
+        if args.interval:
+            time.sleep(args.interval)
         # ms, tflops = bench(A, Bkn, C, configs[1], iters=args.iters, warmup=args.warmup)
         # ms, tflops = bench(A, Bkn, C, configs[2], iters=args.iters, warmup=args.warmup)
         # ms, tflops = bench(A, Bkn, C, configs[3], iters=args.iters, warmup=args.warmup)
@@ -370,7 +371,8 @@ def main():
                     f.write(csv_output)
             torch.cuda.synchronize()
             import time
-            time.sleep(args.interval)
+            if args.interval:
+                time.sleep(args.interval)
             torch.cuda.synchronize()
     if args.save:
         csv_output = "\n".join(csv_lines)
